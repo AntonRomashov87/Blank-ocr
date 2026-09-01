@@ -1,17 +1,29 @@
 // netlify/functions/ocr.js  (Gemini, безкоштовний тір)
-// Ключ — у змінній оточення GEMINI_API_KEY, у браузер не потрапляє.
-// Назву моделі вгадувати не треба: функція питає в Google список доступних
-// і сама обирає придатну. Можна зафіксувати вручну через GEMINI_MODEL.
+// Ключ — у змінній оточення GEMINI_API_KEY.
+// GET /.netlify/functions/ocr?models=1  — показує доступні моделі.
+// Щоб не витрачати час на пошук моделі, задай GEMINI_MODEL у Netlify.
 
 const BASE = 'https://generativelanguage.googleapis.com/v1beta';
 const BAD = ['embedding', 'aqa', 'image', 'tts', 'audio', 'live', 'veo', 'imagen', 'gemma'];
 
+let CACHE = null; // список моделей живе, поки контейнер теплий
+
 exports.handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') return { statusCode: 204, headers: cors(), body: '' };
-  if (event.httpMethod !== 'POST') return reply(405, { error: 'Only POST' });
 
   const key = process.env.GEMINI_API_KEY;
   if (!key) return reply(500, { error: 'GEMINI_API_KEY не заданий у налаштуваннях Netlify' });
+
+  // діагностика: подивитись, які моделі доступні саме твоєму ключу
+  if (event.httpMethod === 'GET') {
+    if ((event.queryStringParameters || {}).models === undefined) return reply(405, { error: 'Only POST' });
+    try {
+      return reply(200, { models: await pickModels(key), fixed: process.env.GEMINI_MODEL || null });
+    } catch (e) {
+      return reply(502, { error: e.message });
+    }
+  }
+  if (event.httpMethod !== 'POST') return reply(405, { error: 'Only POST' });
 
   let images = [], prompt = '';
   try {
@@ -36,11 +48,13 @@ exports.handler = async (event) => {
 
   const tried = [];
 
-  for (const model of models.slice(0, 4)) {
-    for (const strictJson of [true, false]) {
-      const cfg = { temperature: 0, maxOutputTokens: 8192 };
-      if (strictJson) cfg.responseMimeType = 'application/json';
-
+  // тільки дві спроби: часу в Netlify мало (10 с на безкоштовному плані)
+  for (const model of models.slice(0, 2)) {
+    // thinking вимкнено — для розпізнавання воно не потрібне, а часу їсть найбільше
+    for (const cfg of [
+      { temperature: 0, maxOutputTokens: 4096, responseMimeType: 'application/json', thinkingConfig: { thinkingBudget: 0 } },
+      { temperature: 0, maxOutputTokens: 4096, responseMimeType: 'application/json' }
+    ]) {
       let r, j;
       try {
         r = await fetch(`${BASE}/models/${model}:generateContent`, {
@@ -62,42 +76,43 @@ exports.handler = async (event) => {
         const text = (j?.candidates?.[0]?.content?.parts || []).map(p => p.text || '').join('');
         if (text.trim()) return reply(200, { text, model });
         tried.push(`${model}: порожня відповідь`);
-        continue;
+        break;
       }
 
       tried.push(`${model}: ${j?.error?.message || r.status}`);
-      if (r.status !== 400) break;
+      if (r.status !== 400) break; // 400 може бути через thinkingConfig — повторюємо без нього
     }
   }
 
   return reply(502, { error: 'Жодна модель не відповіла. ' + tried.join(' | ') });
 };
 
-// список моделей від Google, відсортований: новіші Flash першими
 async function pickModels(key) {
   if (process.env.GEMINI_MODEL) return [process.env.GEMINI_MODEL];
+  if (CACHE) return CACHE;
 
   const r = await fetch(`${BASE}/models?pageSize=200`, { headers: { 'x-goog-api-key': key } });
   const j = await r.json();
   if (!r.ok) throw new Error(j?.error?.message || String(r.status));
 
-  return (j.models || [])
+  CACHE = (j.models || [])
     .filter(m => (m.supportedGenerationMethods || []).includes('generateContent'))
     .map(m => String(m.name).replace(/^models\//, ''))
     .filter(n => !BAD.some(b => n.includes(b)))
     .filter(n => n.includes('flash') || n.includes('pro'))
     .filter((n, i, arr) => arr.indexOf(n) === i)
     .sort((a, b) => rank(b) - rank(a));
+  return CACHE;
 }
 
 function rank(n) {
   const ver = parseFloat((n.match(/(\d+(?:\.\d+)?)/) || [])[1] || '0');
   let s = ver * 100;
-  if (n.includes('flash')) s += 40;      // на безкоштовному тірі доступні саме Flash
-  if (n.includes('lite')) s -= 15;       // трохи слабші на рукописі
+  if (n.includes('flash')) s += 40;
+  if (n.includes('lite')) s += 10;   // швидші — важливо через ліміт часу
   if (n.includes('preview') || n.includes('exp')) s -= 25;
   if (n.includes('latest')) s += 5;
-  if (n.includes('pro')) s -= 30;        // на free tier зазвичай недоступні
+  if (n.includes('pro')) s -= 60;    // повільні й зазвичай платні
   return s;
 }
 
@@ -105,7 +120,7 @@ function cors() {
   return {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'content-type',
-    'Access-Control-Allow-Methods': 'POST, OPTIONS'
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS'
   };
 }
 function reply(code, obj) {
