@@ -9,6 +9,7 @@
   :root{
     --paper:#fbfaf6; --rule:#ccd2d9; --ink:#1c3f8f; --pencil:#2f3237;
     --red:#c0392b; --amber:#a8701c; --green:#2f6f4e; --shade:#eef0f3;
+    --gold:#c8961e; --navy:#1a3a6b;
     --lt:#f0ece3; --dk:#b0bac7; --hl:rgba(200,170,40,.45);
   }
   *{box-sizing:border-box}
@@ -19,6 +20,23 @@
   header{border-bottom:2px solid var(--pencil);padding-bottom:8px;margin-bottom:14px;
     display:flex;justify-content:space-between;align-items:baseline;gap:10px}
   header h1{font-size:20px;margin:0;font-weight:650;letter-spacing:-.02em}
+  header .brand{display:flex;align-items:center;gap:10px}
+  header img.logo{width:38px;height:38px;border-radius:4px;display:block}
+  button.go{background:var(--gold);border-color:var(--gold);color:#2a2205;padding:11px 20px;font-size:17px}
+  button.go:hover{background:#b7871a;border-color:#b7871a}
+
+  .sheetgrid{display:block}
+  .sheetview{margin-bottom:12px}
+  .shot{max-height:44vh;overflow:auto;border:1px solid var(--rule);background:var(--shade)}
+  .shot img{display:block;width:100%;max-width:none}
+  .zoom{display:flex;gap:6px;align-items:center;margin-top:6px;flex-wrap:wrap}
+  .zoom input[type=range]{flex:1;min-width:110px}
+  .zoom span{font-size:12px;color:#767b81;font-family:ui-monospace,monospace}
+  @media (min-width:760px){
+    .sheetgrid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;align-items:start}
+    .sheetview{position:sticky;top:10px;margin-bottom:0}
+    .shot{max-height:70vh}
+  }
   header span{font-size:11px;color:#767b81;white-space:nowrap}
 
   .panel{border:1px solid var(--rule);background:#fff;padding:12px;margin-bottom:12px}
@@ -95,8 +113,11 @@
 <div class="wrap">
 
 <header>
-  <h1>Оцифровувач бланків</h1>
-  <span>Smart Chess System</span>
+  <div class="brand">
+    <img class="logo" src="data:image/jpeg;base64,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" alt="Smart Chess System">
+    <h1>Оцифровувач бланків</h1>
+  </div>
+  <span>Smart Chess System®</span>
 </header>
 
 <div class="panel">
@@ -104,10 +125,10 @@
   <div class="row">
     <input type="file" id="fileCam" accept="image/*" capture="environment" hidden>
     <input type="file" id="fileLib" accept="image/*" multiple hidden>
-    <button onclick="document.getElementById('fileCam').click()">Зняти фото</button>
-    <button class="ghost" onclick="document.getElementById('fileLib').click()">Обрати з галереї</button>
-    <button class="ghost" id="btnRec" disabled>Розпізнати</button>
-    <button class="ghost" id="btnDemo">Демо-бланк</button>
+    <button class="ghost" onclick="document.getElementById('fileCam').click()">Камера</button>
+    <button class="ghost" onclick="document.getElementById('fileLib').click()">Галерея</button>
+    <button class="go" id="btnRec" disabled>Розпізнати</button>
+    <button class="ghost tiny" id="btnDemo">Демо</button>
   </div>
   <div id="thumbs"></div>
   <div class="status" id="st">Знімай зверху, бланк на весь кадр. Для дрібного почерку — окреме фото на кожну колонку.</div>
@@ -132,7 +153,20 @@
 
 <div class="panel" id="pMoves" hidden>
   <h2>Ходи <em id="mvCount"></em></h2>
-  <table class="sheet"><thead><tr><th>№</th><th>білі</th><th>чорні</th></tr></thead><tbody id="tb"></tbody></table>
+  <div class="sheetgrid">
+    <div class="sheetview" id="sheetView" hidden>
+      <div class="shot" id="shot"><img id="shotImg" alt="знятий бланк"></div>
+      <div class="zoom">
+        <button class="ghost tiny" id="zOut">−</button>
+        <input type="range" id="zRange" min="100" max="500" step="10" value="100" aria-label="масштаб">
+        <button class="ghost tiny" id="zIn">+</button>
+        <span id="zNum"></span>
+        <button class="ghost tiny" id="zPrev" hidden>◀</button>
+        <button class="ghost tiny" id="zNext" hidden>▶</button>
+      </div>
+    </div>
+    <table class="sheet"><thead><tr><th>№</th><th>білі</th><th>чорні</th></tr></thead><tbody id="tb"></tbody></table>
+  </div>
   <div class="legend">
     <span class="k" style="background:var(--ink)"></span>прочитано з бланка &nbsp;
     <span class="k" style="background:var(--amber)"></span>виправлено правилами &nbsp;
@@ -307,6 +341,7 @@ function render(){
   }
   $('mvCount').textContent=SOLVED.length?`${Math.ceil(SOLVED.length/2)} ходів`:'';
   $('pMoves').hidden=!SOLVED.length;
+  drawShot();
   $('pBoard').hidden=!SOLVED.length;
   drawBoard();
   drawCands();
@@ -431,6 +466,25 @@ $('btnCollClear').onclick=()=>{COLL=[];drawColl();persist();};
 async function persist(){try{await window.storage.set('coll',JSON.stringify(COLL));}catch(e){}}
 (async()=>{try{const r=await window.storage.get('coll');if(r&&r.value){COLL=JSON.parse(r.value);drawColl();}}catch(e){}})();
 
+/* ---------- перегляд знятого бланка ---------- */
+let SHOT=0;
+function drawShot(){
+  const box=$('sheetView');
+  if(!IMAGES.length){box.hidden=true;return;}
+  box.hidden=false;
+  if(SHOT>=IMAGES.length) SHOT=0;
+  $('shotImg').src=IMAGES[SHOT].url;
+  $('zNum').textContent=IMAGES.length>1?`${SHOT+1}/${IMAGES.length}`:'';
+  $('zPrev').hidden=$('zNext').hidden=IMAGES.length<2;
+  applyZoom();
+}
+function applyZoom(){ $('shotImg').style.width=$('zRange').value+'%'; }
+$('zRange').addEventListener('input',applyZoom);
+$('zIn').onclick=()=>{$('zRange').value=Math.min(500,+$('zRange').value+50);applyZoom();};
+$('zOut').onclick=()=>{$('zRange').value=Math.max(100,+$('zRange').value-50);applyZoom();};
+$('zPrev').onclick=()=>{SHOT=(SHOT-1+IMAGES.length)%IMAGES.length;drawShot();};
+$('zNext').onclick=()=>{SHOT=(SHOT+1)%IMAGES.length;drawShot();};
+
 /* ---------- фото ---------- */
 async function shrink(file){
   const url=await new Promise(r=>{const fr=new FileReader();fr.onload=()=>r(fr.result);fr.readAsDataURL(file);});
@@ -444,7 +498,7 @@ async function shrink(file){
 async function onPick(e){
   $('st').className='status';$('st').textContent='Готую фото…';
   for(const f of e.target.files) IMAGES.push(await shrink(f));
-  drawThumbs();
+  drawThumbs(); drawShot();
   $('st').textContent=`${IMAGES.length} фото готово. Тисни «Розпізнати».`;
   e.target.value='';
 }
@@ -456,7 +510,7 @@ function drawThumbs(){
     const d=document.createElement('div');d.className='th';
     const img=document.createElement('img');img.src=im.url;img.alt='бланк '+(i+1);
     const b=document.createElement('button');b.textContent='×';b.title='прибрати';
-    b.onclick=()=>{IMAGES.splice(i,1);drawThumbs();$('btnRec').disabled=!IMAGES.length;};
+    b.onclick=()=>{IMAGES.splice(i,1);drawThumbs();drawShot();$('btnRec').disabled=!IMAGES.length;};
     d.append(img,b);t.appendChild(d);
   });
   $('btnRec').disabled=!IMAGES.length;
