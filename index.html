@@ -435,10 +435,10 @@ async function persist(){try{await window.storage.set('coll',JSON.stringify(COLL
 async function shrink(file){
   const url=await new Promise(r=>{const fr=new FileReader();fr.onload=()=>r(fr.result);fr.readAsDataURL(file);});
   const img=await new Promise(r=>{const i=new Image();i.onload=()=>r(i);i.src=url;});
-  const max=1600,k=Math.min(1,max/Math.max(img.width,img.height));
+  const max=1200,k=Math.min(1,max/Math.max(img.width,img.height));
   const c=document.createElement('canvas');c.width=img.width*k;c.height=img.height*k;
   c.getContext('2d').drawImage(img,0,0,c.width,c.height);
-  const d=c.toDataURL('image/jpeg',.85);
+  const d=c.toDataURL('image/jpeg',.72);
   return {media:'image/jpeg',data:d.split(',')[1],url:d};
 }
 async function onPick(e){
@@ -472,7 +472,7 @@ const PROMPT=`Це фото рукописного шахового бланка
 
 $('btnRec').onclick=async()=>{
   $('btnRec').disabled=true;
-  $('st').className='status';$('st').textContent='Читаю бланк…';
+  $('st').className='status';$('st').textContent='Читаю бланк… (до 10 секунд)';
   try{
     const r=await fetch('/.netlify/functions/ocr',{method:'POST',
       headers:{'Content-Type':'application/json'},
