@@ -47,9 +47,12 @@ exports.handler = async (event) => {
   ];
 
   const tried = [];
+  const t0 = Date.now();
 
-  // тільки дві спроби: часу в Netlify мало (10 с на безкоштовному плані)
-  for (const model of models.slice(0, 2)) {
+  // відмови типу "high demand" приходять миттєво, тому спроб більше,
+  // але слідкуємо за часом: у Netlify всього 10 секунд
+  for (const model of models.slice(0, 5)) {
+    if (Date.now() - t0 > 7000) { tried.push('час вичерпано'); break; }
     // thinking вимкнено — для розпізнавання воно не потрібне, а часу їсть найбільше
     for (const cfg of [
       { temperature: 0, maxOutputTokens: 4096, responseMimeType: 'application/json', thinkingConfig: { thinkingBudget: 0 } },
@@ -98,21 +101,21 @@ async function pickModels(key) {
   CACHE = (j.models || [])
     .filter(m => (m.supportedGenerationMethods || []).includes('generateContent'))
     .map(m => String(m.name).replace(/^models\//, ''))
+    .filter(n => n.startsWith('gemini-'))
     .filter(n => !BAD.some(b => n.includes(b)))
-    .filter(n => n.includes('flash') || n.includes('pro'))
+    .filter(n => n.includes('flash'))
     .filter((n, i, arr) => arr.indexOf(n) === i)
     .sort((a, b) => rank(b) - rank(a));
   return CACHE;
 }
 
 function rank(n) {
-  const ver = parseFloat((n.match(/(\d+(?:\.\d+)?)/) || [])[1] || '0');
+  const ver = parseFloat((n.match(/^gemini-(\d+(?:\.\d+)?)/) || [])[1] || '0');
   let s = ver * 100;
-  if (n.includes('flash')) s += 40;
-  if (n.includes('lite')) s += 10;   // швидші — важливо через ліміт часу
-  if (n.includes('preview') || n.includes('exp')) s -= 25;
+  if (n.includes('lite')) s += 12;                        // швидші, а часу мало
+  if (n.includes('preview') || n.includes('exp')) s -= 30;
   if (n.includes('latest')) s += 5;
-  if (n.includes('pro')) s -= 60;    // повільні й зазвичай платні
+  if (/\d{2}-\d{4}$/.test(n)) s -= 20;                    // датовані знімки
   return s;
 }
 
