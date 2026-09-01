@@ -95,6 +95,13 @@
     border-color:var(--rule);font-weight:500}
   .cands button.top{border-color:var(--ink);font-weight:700}
 
+  td.mv .ev{display:block;font-size:10px;line-height:1.15;color:#8f949a;font-family:inherit}
+  td.mv .ev b{font-weight:700}
+  td.mv .ev .bl{color:var(--red)}
+  td.mv .ev .ms{color:var(--amber)}
+  td.mv.suspect{outline:2px dashed var(--red);outline-offset:-3px}
+  .prog{height:6px;background:var(--shade);border:1px solid var(--rule);margin-top:8px}
+  .prog i{display:block;height:100%;background:var(--gold);width:0}
   .legend{font-size:12px;color:#767b81;margin-top:8px;line-height:1.6}
   .k{display:inline-block;width:9px;height:9px;margin-right:3px;vertical-align:-1px}
 
@@ -203,6 +210,16 @@
   </div>
 </div>
 
+<div class="panel" id="pEng" hidden>
+  <h2>Аналіз двигуном <em id="engModel"></em></h2>
+  <div class="row">
+    <button class="ghost" id="btnEng">Проаналізувати партію</button>
+    <button class="ghost tiny" id="btnEngStop" hidden>Зупинити</button>
+  </div>
+  <div class="prog" id="engProg" hidden><i id="engBar"></i></div>
+  <div class="status" id="engSt">Оцінює кожну позицію й позначає зівки. Двигун нічого не виправляє сам.</div>
+</div>
+
 <div class="panel" id="pOut" hidden>
   <h2>PGN</h2>
   <textarea id="pgn" readonly></textarea>
@@ -266,6 +283,26 @@ function lev(a,b){
 }
 function score(tok,san){let b=99;for(const v of variants(san))b=Math.min(b,lev(tok,v));return b;}
 
+/* кеші: живуть весь сеанс, тому кожне наступне виправлення майже миттєве */
+const C_MOVES=new Map(), C_NEXT=new Map(), C_SCORE=new Map();
+function sansOf(fen){
+  let a=C_MOVES.get(fen);
+  if(!a){ a=new Chess(fen).moves(); C_MOVES.set(fen,a); }
+  return a;
+}
+function nextFen(fen,san){
+  const k=fen+'|'+san;
+  let f=C_NEXT.get(k);
+  if(!f){ const g=new Chess(fen); g.move(san); f=g.fen(); C_NEXT.set(k,f); }
+  return f;
+}
+function sc(tok,san){
+  const k=tok+'\u0001'+san;
+  let v=C_SCORE.get(k);
+  if(v===undefined){ v=score(tok,san); C_SCORE.set(k,v); }
+  return v;
+}
+
 /* ---------- пошук по променю з урахуванням правил ---------- */
 const CUT=3.2, WIDTH=140, BLANK=1.7;
 function solve(tokens,anchors){
@@ -273,23 +310,27 @@ function solve(tokens,anchors){
   let stopped=-1;
   for(let i=0;i<tokens.length;i++){
     const tok=norm(tokens[i]);
+    const anc=anchors[i];
     const cand=[];
     for(const b of beams){
-      const g=new Chess(b.fen);
-      for(const mv of g.moves({verbose:true})){
+      for(const san of sansOf(b.fen)){
         let c;
-        if(anchors[i]) c=(mv.san===anchors[i])?0:Infinity;
-        else c=tok?score(tok,mv.san):BLANK;
-        if(!isFinite(c)||c>CUT) continue;
-        cand.push({cost:b.cost+c,parent:b,san:mv.san,c,tok});
+        if(anc){ if(san!==anc) continue; c=0; }
+        else { c=tok?sc(tok,san):BLANK; if(c>CUT) continue; }
+        cand.push({cost:b.cost+c,parent:b,san,c});
       }
     }
     if(!cand.length){stopped=i;break;}
     cand.sort((x,y)=>x.cost-y.cost);
-    beams=cand.slice(0,WIDTH).map(x=>{
-      const g=new Chess(x.parent.fen);g.move(x.san);
-      return {cost:x.cost,fen:g.fen(),path:x.parent.path.concat([{tok:x.tok,san:x.san,c:x.c}])};
-    });
+    // позиції рахуємо лише для найкращих, однакові позиції зливаємо
+    const seen=new Map();
+    for(const x of cand){
+      if(seen.size>=WIDTH) break;
+      const f=nextFen(x.parent.fen,x.san);
+      if(seen.has(f)) continue;
+      seen.set(f,{cost:x.cost,fen:f,path:x.parent.path.concat([{tok,san:x.san,c:x.c}])});
+    }
+    beams=[...seen.values()];
   }
   return {path:beams[0].path,stopped};
 }
@@ -305,7 +346,10 @@ function shiftAnchors(at,delta){
 }
 
 function rerun(keepSel){
+  engStop();
+  const t0=performance.now();
   const r=solve(TOKENS,ANCHORS);
+  const ms=Math.round(performance.now()-t0);
   SOLVED=r.path;
   const doubt=SOLVED.filter((s,i)=>!ANCHORS[i]&&s.c>=1.2).length;
   const st=$('st');
@@ -314,7 +358,7 @@ function rerun(keepSel){
     st.textContent=`Запис не сходиться на півході ${r.stopped+1}: жоден легальний хід не схожий на написане. Виправ попередній хід або вважай, що бланк обірвано тут.`;
   }else{
     st.className='status '+(doubt?'':'ok');
-    st.textContent=`Розібрано ${SOLVED.length} півходів. Ненадійних: ${doubt}. Підтверджено вручну: ${Object.keys(ANCHORS).length}.`;
+    st.textContent=`Розібрано ${SOLVED.length} півходів. Ненадійних: ${doubt}. Підтверджено вручну: ${Object.keys(ANCHORS).length}. Перерахунок ${ms} мс.`;
   }
   if(!keepSel||SEL>=SOLVED.length) SEL=SOLVED.length-1;
   render();
@@ -333,6 +377,13 @@ function render(){
         td.appendChild(document.createTextNode(s.san));
         if(s.tok&&s.tok!==s.san){const r=document.createElement('span');r.className='raw';r.textContent=s.tok;td.appendChild(r);}
         else if(!s.tok){const r=document.createElement('span');r.className='raw';r.textContent='порожньо';td.appendChild(r);}
+        if(s.ev!==undefined){
+          const e=document.createElement('span');e.className='ev';
+          const mark=s.loss>=300?'<b class="bl">??</b> ':(s.loss>=150?'<b class="ms">?</b> ':(s.loss>=80?'?! ':''));
+          e.innerHTML=mark+fmtEval(s.ev);
+          td.appendChild(e);
+          if(s.loss>=300&&!ANCHORS[j]&&s.c>=1.2) td.classList.add('suspect');
+        }
         td.onclick=()=>{SEL=j;render();$('pBoard').scrollIntoView({behavior:'smooth',block:'nearest'});};
       }
       tr.appendChild(td);
@@ -341,6 +392,7 @@ function render(){
   }
   $('mvCount').textContent=SOLVED.length?`${Math.ceil(SOLVED.length/2)} ходів`:'';
   $('pMoves').hidden=!SOLVED.length;
+  $('pEng').hidden=!SOLVED.length;
   drawShot();
   $('pBoard').hidden=!SOLVED.length;
   drawBoard();
@@ -407,6 +459,7 @@ document.addEventListener('keydown',e=>{
   if(e.key==='ArrowRight'){$('nNext').click();e.preventDefault();}
 });
 $('btnClear').onclick=()=>{delete ANCHORS[SEL];rerun(true)};
+// показуємо, скільки часу зайняв перерахунок — щоб було видно, що він миттєвий
 $('btnReset').onclick=()=>{ANCHORS={};rerun(true)};
 $('btnInsert').onclick=()=>{TOKENS.splice(SEL,0,'');shiftAnchors(SEL,1);rerun(true)};
 $('btnDelete').onclick=()=>{TOKENS.splice(SEL,1);shiftAnchors(SEL+1,-1);delete ANCHORS[SEL];rerun(true)};
@@ -465,6 +518,108 @@ $('btnCollSave').onclick=()=>download(COLL.map(g=>g.pgn).join('\n'),'tur.pgn');
 $('btnCollClear').onclick=()=>{COLL=[];drawColl();persist();};
 async function persist(){try{await window.storage.set('coll',JSON.stringify(COLL));}catch(e){}}
 (async()=>{try{const r=await window.storage.get('coll');if(r&&r.value){COLL=JSON.parse(r.value);drawColl();}}catch(e){}})();
+
+/* ---------- Stockfish ---------- */
+// Якщо жодна адреса не спрацює — поклади файл рушія поруч з index.html
+// у репозиторії і додай сюди рядок '/stockfish.js'
+const ENGINE_URLS=[
+  '/stockfish.js',
+  'https://cdnjs.cloudflare.com/ajax/libs/stockfish.js/10.0.2/stockfish.js',
+  'https://cdn.jsdelivr.net/npm/stockfish@10.0.2/src/stockfish.js',
+  'https://unpkg.com/stockfish@10.0.2/src/stockfish.js'
+];
+const DEPTH=11;
+let ENG=null, ENG_BUSY=false, ENG_ABORT=false;
+
+function fmtEval(cp){
+  if(cp===null||cp===undefined) return '';
+  if(Math.abs(cp)>=100000){ const m=Math.sign(cp)*Math.ceil((100000-Math.abs(cp)%100000)/1); return '#'; }
+  return (cp>0?'+':'')+(cp/100).toFixed(1);
+}
+
+function makeWorker(url){
+  const src=url.startsWith('/')?url:url;
+  const blob=new Blob([`importScripts(${JSON.stringify(new URL(src,location.href).href)});`],{type:'text/javascript'});
+  return new Worker(URL.createObjectURL(blob));
+}
+
+function loadEngine(){
+  if(ENG) return Promise.resolve(ENG);
+  const tryOne=(i)=>new Promise((res,rej)=>{
+    if(i>=ENGINE_URLS.length) return rej(new Error('жодна адреса рушія не відповіла'));
+    let w;
+    try{ w=makeWorker(ENGINE_URLS[i]); }catch(e){ return res(tryOne(i+1)); }
+    const timer=setTimeout(()=>{ try{w.terminate()}catch(e){} res(tryOne(i+1)); },12000);
+    w.onerror=()=>{ clearTimeout(timer); try{w.terminate()}catch(e){} res(tryOne(i+1)); };
+    w.onmessage=(e)=>{
+      const t=String(e.data||'');
+      if(t.indexOf('uciok')>=0){
+        clearTimeout(timer);
+        $('engModel').textContent=ENGINE_URLS[i].replace(/^https?:\/\/([^/]+).*/,'$1');
+        ENG=w; res(w);
+      }
+    };
+    w.postMessage('uci');
+  });
+  return tryOne(0);
+}
+
+function evalFen(fen){
+  return new Promise(res=>{
+    let best=null;
+    const on=(e)=>{
+      const t=String(e.data||'');
+      if(t.startsWith('info')&&t.indexOf(' score ')>=0){
+        const cp=t.match(/score cp (-?\d+)/), mt=t.match(/score mate (-?\d+)/);
+        if(mt) best=(+mt[1]>0?1:-1)*100000;
+        else if(cp) best=+cp[1];
+      }else if(t.startsWith('bestmove')){
+        ENG.removeEventListener('message',on);
+        res(best);
+      }
+    };
+    ENG.addEventListener('message',on);
+    ENG.postMessage('position fen '+fen);
+    ENG.postMessage('go depth '+DEPTH);
+  });
+}
+
+function engStop(){ ENG_ABORT=true; $('btnEngStop').hidden=true; $('engProg').hidden=true; }
+
+$('btnEng').onclick=async()=>{
+  if(ENG_BUSY) return;
+  ENG_BUSY=true; ENG_ABORT=false;
+  $('btnEng').disabled=true; $('btnEngStop').hidden=false; $('engProg').hidden=false;
+  $('engSt').className='status'; $('engSt').textContent='Завантажую рушій…';
+  try{
+    await loadEngine();
+    const g=new Chess(); const fens=[g.fen()];
+    for(const m of SOLVED){ g.move(m.san); fens.push(g.fen()); }
+    let prev=await evalFen(fens[0]);
+    for(let i=0;i<SOLVED.length;i++){
+      if(ENG_ABORT) break;
+      const after=await evalFen(fens[i+1]);
+      const sign=(i%2===0)?1:-1;                 // хід білих чи чорних
+      SOLVED[i].ev=after;
+      SOLVED[i].loss=Math.max(0,(prev-after)*sign);
+      prev=after;
+      $('engBar').style.width=Math.round((i+1)/SOLVED.length*100)+'%';
+      $('engSt').textContent=`Аналіз ${i+1} з ${SOLVED.length}…`;
+      if(i%4===3) render();
+    }
+    render();
+    const bl=SOLVED.filter(m=>m.loss>=300).length;
+    const sus=SOLVED.filter((m,i)=>m.loss>=300&&!ANCHORS[i]&&m.c>=1.2).length;
+    $('engSt').className='status'+(sus?' err':'');
+    $('engSt').textContent=ENG_ABORT?'Аналіз зупинено.':
+      `Готово. Грубих помилок: ${bl}.`+(sus?` З них ${sus} у ходах, прочитаних ненадійно — обведені пунктиром, перевір по фото.`:'');
+  }catch(e){
+    $('engSt').className='status err';
+    $('engSt').textContent='Рушій не завантажився: '+e.message+'. Поклади файл stockfish.js у репозиторій поруч з index.html.';
+  }
+  $('btnEng').disabled=false; $('btnEngStop').hidden=true; $('engProg').hidden=true; ENG_BUSY=false;
+};
+$('btnEngStop').onclick=engStop;
 
 /* ---------- перегляд знятого бланка ---------- */
 let SHOT=0;
