@@ -2,744 +2,807 @@
 <html lang="uk">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Оцифровувач бланків — Smart Chess System</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Читалка шахових книг — Smart Chess System®</title>
 <style>
-  :root{
-    --paper:#fbfaf6; --rule:#ccd2d9; --ink:#1c3f8f; --pencil:#2f3237;
-    --red:#c0392b; --amber:#a8701c; --green:#2f6f4e; --shade:#eef0f3;
-    --gold:#c8961e; --navy:#1a3a6b;
-    --lt:#f0ece3; --dk:#b0bac7; --hl:rgba(200,170,40,.45);
-  }
-  *{box-sizing:border-box}
-  html,body{margin:0;padding:0}
-  body{background:var(--paper);color:var(--pencil);
-    font:16px/1.45 "Inter","Segoe UI",system-ui,sans-serif;-webkit-text-size-adjust:100%}
-  .wrap{max-width:1400px;margin:0 auto;padding:14px 14px 40px}
-  header{border-bottom:2px solid var(--pencil);padding-bottom:8px;margin-bottom:14px;
-    display:flex;justify-content:space-between;align-items:baseline;gap:10px}
-  header h1{font-size:20px;margin:0;font-weight:650;letter-spacing:-.02em}
-  header .brand{display:flex;align-items:center;gap:10px}
-  header img.logo{width:38px;height:38px;border-radius:4px;display:block}
-  button.go{background:var(--gold);border-color:var(--gold);color:#2a2205;padding:11px 20px;font-size:17px}
-  button.go:hover{background:#b7871a;border-color:#b7871a}
+:root{
+  --desk:#232830;
+  --desk-2:#1b1f26;
+  --line:#39414d;
+  --ink:#E7E4DC;
+  --ink-dim:#96A0AE;
+  --paper:#F2EFE7;
+  --sq-light:#f0d9b5;      /* lichess brown */
+  --sq-dark:#b58863;
+  --hl:rgba(155,199,0,.41); /* підсвітка останнього ходу, як на лічесі */
+  --mark:#B3382C;
+  --mark-soft:rgba(179,56,44,.22);
+  --ok:#6E9E5E;
+  --warn:#C8922E;
+  --serif:Georgia,"Times New Roman",serif;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--desk);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.5;display:flex;flex-direction:column}
+button,input,select{font:inherit;color:inherit}
+button{background:var(--desk-2);border:1px solid var(--line);color:var(--ink);padding:7px 12px;border-radius:3px;cursor:pointer}
+button:hover:not(:disabled){border-color:var(--ink-dim)}
+button:disabled{opacity:.4;cursor:default}
+button.primary{background:var(--mark);border-color:var(--mark);color:#fff}
+button.primary:hover:not(:disabled){filter:brightness(1.1)}
+:focus-visible{outline:2px solid var(--warn);outline-offset:2px}
+input[type=file]{max-width:230px;background:var(--desk-2);border:1px solid var(--line);border-radius:3px;padding:5px 7px;font-size:13px}
+input[type=file]::file-selector-button{background:var(--desk);color:var(--ink);border:1px solid var(--line);border-radius:2px;padding:3px 9px;margin-right:8px;cursor:pointer}
 
-  .sheetgrid{display:block}
-  .sheetview,.boardcol{margin-bottom:14px}
-  .shot{max-height:44vh;overflow:auto;border:1px solid var(--rule);background:var(--shade)}
-  .shot img{display:block;width:100%;max-width:none}
-  .zoom{display:flex;gap:6px;align-items:center;margin-top:6px;flex-wrap:wrap}
-  .zoom input[type=range]{flex:1;min-width:110px}
-  .zoom span{font-size:12px;color:#767b81;font-family:ui-monospace,monospace}
-  .tablecol{overflow-x:auto}
-  .colhead{font-size:12px;font-weight:650;color:#767b81;margin:0 0 6px}
-  @media (min-width:900px){
-    .sheetgrid{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr) minmax(0,.8fr);
-      gap:16px;align-items:start}
-    .sheetview,.boardcol{position:sticky;top:10px;margin-bottom:0}
-    .shot{max-height:74vh}
-    .board{width:100%}
-  }
-  @media (min-width:900px) and (max-width:1199px){
-    .sheetgrid{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
-    .tablecol{grid-column:1/-1}
-    .tablecol{position:static}
-  }
-  header span{font-size:11px;color:#767b81;white-space:nowrap}
+header{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;padding:10px 16px;border-bottom:1px solid var(--line);background:var(--desk-2)}
+header h1{font-family:var(--serif);font-size:19px;font-weight:400;margin:0}
+header .brand{color:var(--ink-dim);font-size:12px}
 
-  .panel{border:1px solid var(--rule);background:#fff;padding:12px;margin-bottom:12px}
-  .panel>h2{font-size:13px;margin:0 0 10px;font-weight:650;display:flex;justify-content:space-between;gap:8px}
-  .panel>h2 em{font-style:normal;font-weight:400;color:#767b81;font-size:12px}
+#bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:9px 16px;border-bottom:1px solid var(--line)}
+#bar .sp{flex:1}
+#pageBox{display:flex;align-items:center;gap:6px;color:var(--ink-dim)}
+#pageNum{width:58px;background:var(--desk-2);border:1px solid var(--line);border-radius:3px;padding:5px 6px;text-align:center}
 
-  button{font:inherit;font-weight:600;padding:9px 13px;border:1px solid var(--pencil);
-    background:var(--pencil);color:#fff;cursor:pointer}
-  button.ghost{background:#fff;color:var(--pencil)}
-  button.tiny{padding:6px 9px;font-size:13px;font-weight:500}
-  button:disabled{opacity:.35;cursor:default}
-  button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
-  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+main{flex:1;display:flex;min-height:0}
+#left{width:390px;flex:none;border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0;background:var(--desk-2)}
+#right{flex:1;min-width:0;overflow:auto;padding:16px;display:flex;justify-content:center;align-items:flex-start}
+#right.drop{outline:2px dashed var(--warn);outline-offset:-8px}
 
-  input[type=text]{font:inherit;padding:7px 8px;border:1px solid var(--rule);background:#fff;width:100%}
-  .fields{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-  .fields label{font-size:11px;color:#767b81;display:block;margin-bottom:2px}
-  .fields .full{grid-column:1/-1}
-  .res{display:flex;gap:6px;margin-top:8px}
-  .res button{flex:1;font-family:ui-monospace,monospace}
-  .res button[aria-pressed=true]{background:var(--ink);border-color:var(--ink);color:#fff}
+#boardWrap{padding:14px 14px 10px}
+#board{display:grid;grid-template-columns:repeat(8,1fr);width:100%;border:1px solid #11141a;box-shadow:0 6px 24px rgba(0,0,0,.35)}
+.sq{position:relative;aspect-ratio:1/1;overflow:hidden}
+.sq.l{background:var(--sq-light)}
+.sq.d{background:var(--sq-dark)}
+.sq.hl::after{content:"";position:absolute;inset:0;background:var(--hl)}
+.sq img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;z-index:1;pointer-events:none}
+.sq .uni{position:absolute;inset:0;z-index:1;display:flex;align-items:center;justify-content:center;font-size:clamp(15px,4.2vw,34px);line-height:1}
+.sq .uni.w{color:#FBFAF7;text-shadow:0 0 1px #111,0 1px 0 #111,0 -1px 0 #111,1px 0 0 #111,-1px 0 0 #111}
+.sq .uni.b{color:#111}
+.sq .co{position:absolute;z-index:2;font-size:9px;font-family:var(--mono);font-weight:600}
+.sq.l .co{color:var(--sq-dark)}
+.sq.d .co{color:var(--sq-light)}
+.co.f{bottom:1px;right:2px}
+.co.r{top:1px;left:2px}
 
-  #thumbs{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
-  .th{position:relative}
-  .th img{width:70px;height:92px;object-fit:cover;border:1px solid var(--rule);display:block}
-  .th button{position:absolute;top:-6px;right:-6px;width:22px;height:22px;padding:0;
-    border-radius:50%;font-size:13px;line-height:1;background:#fff;color:var(--red);border-color:var(--red)}
+#evalRow{display:flex;align-items:center;gap:10px;padding:0 14px 10px}
+#evalBar{flex:1;height:8px;background:#111;border:1px solid var(--line);border-radius:2px;overflow:hidden}
+#evalFill{height:100%;width:50%;background:var(--paper);transition:width .25s}
+#evalNum{font-family:var(--mono);font-size:14px;min-width:56px;text-align:right}
+#pv{padding:0 14px 8px;font-family:var(--mono);font-size:11.5px;color:var(--ink-dim);height:32px;overflow:hidden}
+#nav{display:flex;gap:6px;padding:0 14px 10px}
+#nav button{flex:1;padding:6px 0}
+#movesHead{padding:8px 14px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);color:var(--ink-dim);font-size:12.5px;display:flex;justify-content:space-between;gap:8px}
+#moves{flex:1;overflow:auto;padding:8px 10px;font-family:var(--mono);font-size:13px;min-height:120px}
+#moves .seg{margin-bottom:10px}
+#moves .segTitle{color:var(--ink-dim);font-family:var(--sans);font-size:11.5px;margin:0 4px 4px}
+.mv{display:inline-block;padding:2px 5px;margin:1px;border-radius:2px;cursor:pointer;border:1px solid transparent}
+.mv:hover{background:#2c323b}
+.mv.cur{background:var(--mark);color:#fff}
+.mv.fixed{border-color:var(--warn)}
+.mv.bad{color:#8a8f98;text-decoration:line-through}
+#shareRow{display:flex;gap:6px;padding:8px 14px 0;flex-wrap:wrap}
+#shareRow button{flex:1;min-width:78px;padding:6px 4px;font-size:13px}
+#bFb:not(:disabled){border-color:#3b5998;color:#9db4e0}
+#pgnBack{position:fixed;inset:0;background:rgba(10,12,16,.72);display:flex;align-items:center;justify-content:center;z-index:50;padding:20px}
+#pgnBox{background:var(--desk-2);border:1px solid var(--line);border-radius:5px;width:min(680px,100%);max-height:82vh;display:flex;flex-direction:column;box-shadow:0 18px 60px rgba(0,0,0,.6)}
+#pgnHead{display:flex;justify-content:space-between;align-items:center;padding:11px 14px;border-bottom:1px solid var(--line);font-family:var(--serif);font-size:16px}
+#pgnHead button{padding:2px 9px}
+#pgnText{flex:1;min-height:220px;margin:0;border:0;border-bottom:1px solid var(--line);background:#141820;color:var(--ink);padding:12px 14px;font-family:var(--mono);font-size:12.5px;line-height:1.6;resize:none}
+#pgnBtns{display:flex;gap:8px;padding:11px 14px;align-items:center;flex-wrap:wrap}
+#pgnNote{color:var(--ink-dim);font-size:12px}
 
-  table.sheet{width:100%;border-collapse:collapse;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:15px}
-  table.sheet td,table.sheet th{border:1px solid var(--rule);padding:5px 7px;text-align:left}
-  table.sheet th{background:var(--shade);font-size:11px;font-family:inherit;font-weight:600;color:#767b81}
-  td.num{width:32px;color:#8f949a;text-align:right;font-size:13px}
-  td.mv{cursor:pointer;color:var(--ink);min-width:76px}
-  td.mv.fixed{color:var(--amber)}
-  td.mv.doubt{color:var(--red);background:#fdf2f1}
-  td.mv.anchor{color:var(--green);font-weight:700}
-  td.mv.sel{box-shadow:inset 0 0 0 2px var(--pencil)}
-  td.mv .raw{display:block;font-size:10px;color:#9aa0a6;line-height:1.15;font-family:inherit}
+#fenRow{display:flex;gap:6px;padding:8px 14px;border-top:1px solid var(--line)}
+#fenIn{flex:1;min-width:0;background:#141820;border:1px solid var(--line);border-radius:3px;padding:5px 7px;font-family:var(--mono);font-size:11px}
 
-  .boardwrap{display:flex;flex-direction:column;align-items:center}
-  .board{width:min(92vw,360px);aspect-ratio:1;display:grid;grid-template-columns:repeat(8,1fr);
-    border:1px solid var(--pencil);position:relative}
-  .board .sq{position:relative;background-size:88%;background-position:center;background-repeat:no-repeat}
-  .board .lt{background-color:var(--lt)}
-  .board .dk{background-color:var(--dk)}
-  .board .sq.hl::after{content:"";position:absolute;inset:0;background:var(--hl)}
-  .board .co{position:absolute;font-size:9px;color:rgba(0,0,0,.45);font-family:ui-monospace,monospace;z-index:2}
-  .board .co.f{right:2px;bottom:1px}
-  .board .co.r{left:2px;top:1px}
-  .nav{display:flex;gap:6px;margin-top:10px;justify-content:center;flex-wrap:wrap}
-  .nav button{font-family:ui-monospace,monospace;min-width:44px}
-  .pos{font-size:13px;color:#767b81;margin-top:6px;text-align:center;font-family:ui-monospace,monospace}
+#pageWrap{position:relative;display:inline-block;background:var(--paper);box-shadow:0 8px 30px rgba(0,0,0,.45);max-width:100%}
+#pdfCanvas{display:block;max-width:100%;height:auto}
+#overlay{position:absolute;inset:0}
+.hot{position:absolute;border-radius:2px;cursor:pointer;background:var(--mark-soft);border-bottom:1.5px solid var(--mark)}
+.hot:hover{background:rgba(179,56,44,.38)}
+.hot.cur{background:rgba(179,56,44,.5)}
+.hot.bad{background:rgba(200,146,46,.2);border-bottom-color:var(--warn)}
+.hot.dia{background:rgba(110,158,94,.16);border:1.5px solid var(--ok)}
+.hot.dia:hover{background:rgba(110,158,94,.3)}
 
-  .cands{display:flex;flex-wrap:wrap;gap:6px;max-height:26vh;overflow:auto;margin:10px 0}
-  .cands button{font-family:ui-monospace,monospace;padding:6px 9px;background:#fff;color:var(--ink);
-    border-color:var(--rule);font-weight:500}
-  .cands button.top{border-color:var(--ink);font-weight:700}
+#empty{max-width:520px;color:var(--ink-dim);padding:36px 10px;font-family:var(--serif);line-height:1.7}
+#empty b{color:var(--ink);font-weight:400}
+#empty ul{padding-left:18px}
+#empty code{font-family:var(--mono);font-size:12px;color:var(--ink)}
 
-  td.mv .ev{display:block;font-size:10px;line-height:1.15;color:#8f949a;font-family:inherit}
-  td.mv .ev b{font-weight:700}
-  td.mv .ev .bl{color:var(--red)}
-  td.mv .ev .ms{color:var(--amber)}
-  td.mv.suspect{outline:2px dashed var(--red);outline-offset:-3px}
-  .prog{height:6px;background:var(--shade);border:1px solid var(--rule);margin-top:8px}
-  .prog i{display:block;height:100%;background:var(--gold);width:0}
-  .legend{font-size:12px;color:#767b81;margin-top:8px;line-height:1.6}
-  .k{display:inline-block;width:9px;height:9px;margin-right:3px;vertical-align:-1px}
-
-  textarea{width:100%;min-height:120px;font-family:ui-monospace,monospace;font-size:12.5px;
-    border:1px solid var(--rule);padding:8px;background:#fff}
-  .status{font-size:13px;color:#767b81;margin-top:8px;min-height:20px}
-  .status.err{color:var(--red)}
-  .status.ok{color:var(--green)}
-  ul.games{list-style:none;margin:8px 0 0;padding:0;font-size:14px}
-  ul.games li{display:flex;justify-content:space-between;gap:8px;border-bottom:1px solid var(--rule);padding:6px 0}
-  ul.games li span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  footer{font-size:11px;color:#8f949a;text-align:center;margin-top:18px;line-height:1.6}
+#status{padding:7px 16px;border-top:1px solid var(--line);background:var(--desk-2);font-size:12.5px;color:var(--ink-dim);display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+.dot{width:7px;height:7px;border-radius:50%;background:#555;display:inline-block;margin-right:5px}
+.dot.on{background:var(--ok)}
+.dot.err{background:var(--mark)}
+.spin{display:inline-block;width:11px;height:11px;border:2px solid var(--ink-dim);border-top-color:transparent;border-radius:50%;animation:sp .7s linear infinite;vertical-align:-1px}
+@keyframes sp{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.spin{animation-duration:2.5s}}
+@media (max-width:900px){
+  main{flex-direction:column}
+  #left{width:auto;border-right:none;border-bottom:1px solid var(--line)}
+  #boardWrap{max-width:380px;margin:0 auto}
+  #moves{max-height:200px}
+}
 </style>
 </head>
 <body>
-<div class="wrap">
 
 <header>
-  <div class="brand">
-    <img class="logo" src="data:image/jpeg;base64,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" alt="Smart Chess System">
-    <h1>Оцифровувач бланків</h1>
-  </div>
-  <span>Smart Chess System®</span>
+  <h1>Читалка шахових книг</h1>
+  <span class="brand">Smart Chess System® · прототип</span>
 </header>
 
-<div class="panel">
-  <h2>Знімок бланка</h2>
-  <div class="row">
-    <input type="file" id="fileCam" accept="image/*" capture="environment" hidden>
-    <input type="file" id="fileLib" accept="image/*" multiple hidden>
-    <button class="ghost" onclick="document.getElementById('fileCam').click()">Камера</button>
-    <button class="ghost" onclick="document.getElementById('fileLib').click()">Галерея</button>
-    <button class="go" id="btnRec" disabled>Розпізнати</button>
-    <button class="ghost tiny" id="btnDemo">Демо</button>
+<div id="bar">
+  <input type="file" id="file" accept="application/pdf,.pdf">
+  <div id="pageBox">
+    <button id="prevPg" disabled>‹</button>
+    <input id="pageNum" value="1" disabled>
+    <span id="pageTot">/ 0</span>
+    <button id="nextPg" disabled>›</button>
   </div>
-  <div id="thumbs"></div>
-  <div class="status" id="st">Знімай зверху, бланк на весь кадр. Для дрібного почерку — окреме фото на кожну колонку.</div>
+  <button id="recog" class="primary" disabled>Розпізнати сторінку</button>
+  <span class="sp"></span>
+  <label style="color:var(--ink-dim);display:flex;gap:6px;align-items:center">
+    <input type="checkbox" id="autoEval" checked> двигун на кожній позиції
+  </label>
+  <button id="diag">Діагностика</button>
+  <select id="depth">
+    <option value="14">глибина 14</option>
+    <option value="18" selected>глибина 18</option>
+    <option value="22">глибина 22</option>
+  </select>
 </div>
 
-<div class="panel" id="pHead" hidden>
-  <h2>Шапка партії</h2>
-  <div class="fields">
-    <div class="full"><label for="hEvent">Турнір</label><input type="text" id="hEvent"></div>
-    <div><label for="hWhite">Білі</label><input type="text" id="hWhite"></div>
-    <div><label for="hBlack">Чорні</label><input type="text" id="hBlack"></div>
-    <div><label for="hDate">Дата</label><input type="text" id="hDate" placeholder="2026.06.09"></div>
-    <div><label for="hRound">Тур</label><input type="text" id="hRound"></div>
-  </div>
-  <div class="res" id="resBtns">
-    <button class="ghost" data-r="1-0">1-0</button>
-    <button class="ghost" data-r="1/2-1/2">½-½</button>
-    <button class="ghost" data-r="0-1">0-1</button>
-    <button class="ghost" data-r="*">*</button>
-  </div>
-</div>
-
-<div class="panel" id="pMoves" hidden>
-  <h2>Ходи <em id="mvCount"></em></h2>
-  <div class="sheetgrid">
-    <div class="sheetview" id="sheetView" hidden>
-      <p class="colhead">Бланк</p>
-      <div class="shot" id="shot"><img id="shotImg" alt="знятий бланк"></div>
-      <div class="zoom">
-        <button class="ghost tiny" id="zOut">−</button>
-        <input type="range" id="zRange" min="100" max="500" step="10" value="100" aria-label="масштаб">
-        <button class="ghost tiny" id="zIn">+</button>
-        <span id="zNum"></span>
-        <button class="ghost tiny" id="zPrev" hidden>◀</button>
-        <button class="ghost tiny" id="zNext" hidden>▶</button>
-      </div>
+<main>
+  <section id="left">
+    <div id="boardWrap"><div id="board"></div></div>
+    <div id="evalRow">
+      <div id="evalBar"><div id="evalFill"></div></div>
+      <div id="evalNum">—</div>
     </div>
-    <div class="boardcol" id="pBoard" hidden>
-      <p class="colhead">Позиція <span id="bTitle"></span></p>
-      <div class="boardwrap">
-        <div class="board" id="board"></div>
-        <div class="nav">
-          <button class="ghost" id="nFirst" title="На початок">|◀</button>
-          <button class="ghost" id="nPrev" title="Назад">◀</button>
-          <button class="ghost" id="nNext" title="Вперед">▶</button>
-          <button class="ghost" id="nLast" title="У кінець">▶|</button>
-          <button class="ghost" id="nFlip" title="Розвернути">⇅</button>
-        </div>
-        <div class="pos" id="posInfo"></div>
-      </div>
-      <div id="editZone" hidden>
-        <div class="status" id="candHint"></div>
-        <div class="cands" id="cands"></div>
-        <div class="row">
-          <button class="ghost tiny" id="btnClear">Зняти підтвердження</button>
-          <button class="ghost tiny" id="btnInsert">Вставити пропущений</button>
-          <button class="ghost tiny" id="btnDelete">Видалити комірку</button>
-        </div>
-      </div>
+    <div id="pv"></div>
+    <div id="nav">
+      <button id="bStart">|‹</button>
+      <button id="bPrev">‹</button>
+      <button id="bNext">›</button>
+      <button id="bEnd">›|</button>
+      <button id="bFlip">↕</button>
     </div>
-    <div class="tablecol">
-      <p class="colhead">Нотація</p>
-      <table class="sheet"><thead><tr><th>№</th><th>білі</th><th>чорні</th></tr></thead><tbody id="tb"></tbody></table>
+    <div id="movesHead"><span>Ходи зі сторінки</span><span id="mvStat"></span></div>
+    <div id="moves"><div style="color:var(--ink-dim);font-family:var(--sans)">Порожньо. Відкрий сторінку і натисни «Розпізнати сторінку».</div></div>
+    <div id="shareRow">
+      <button id="bPgn" disabled>PGN</button>
+      <button id="bMail" disabled>✉ Пошта</button>
+      <button id="bFb" disabled>f Facebook</button>
+      <button id="bShare" hidden>⤴ Поділитися</button>
+    </div>
+    <div id="fenRow">
+      <input id="fenIn" placeholder="FEN — можна виправити вручну">
+      <button id="setFen">Поставити</button>
+    </div>
+  </section>
+
+  <section id="right">
+    <div id="empty">
+      <b>Обери PDF угорі або перетягни файл сюди.</b>
+      <p>Сторінка залишиться такою, як у книзі — розпізнавання не переписує текст, а лише знаходить ходи й діаграми та робить їх клікабельними.</p>
+      <ul>
+        <li>червоне — хід, клік перемотує дошку</li>
+        <li>жовте — прочитано, але хід нелегальний і правила його не полагодили</li>
+        <li>зелена рамка — діаграма, клік ставить позицію на дошку</li>
+      </ul>
+      <p>DjVu спершу конвертуй: <code>ddjvu -format=pdf книга.djvu книга.pdf</code></p>
+    </div>
+    <div id="pageWrap" hidden>
+      <canvas id="pdfCanvas"></canvas>
+      <div id="overlay"></div>
+    </div>
+  </section>
+</main>
+
+<div id="pgnBack" hidden>
+  <div id="pgnBox">
+    <div id="pgnHead">
+      <span id="pgnTitle">PGN партії</span>
+      <button id="pgnClose">✕</button>
+    </div>
+    <textarea id="pgnText" spellcheck="false"></textarea>
+    <div id="pgnBtns">
+      <button id="pgnCopy">Копіювати</button>
+      <button id="pgnSave">Зберегти .pgn</button>
+      <button id="pgnLichess">Відкрити на lichess</button>
+      <span id="pgnNote"></span>
     </div>
   </div>
-  <div class="legend">
-    <span class="k" style="background:var(--ink)"></span>прочитано з бланка &nbsp;
-    <span class="k" style="background:var(--amber)"></span>виправлено правилами &nbsp;
-    <span class="k" style="background:var(--red)"></span>ненадійно &nbsp;
-    <span class="k" style="background:var(--green)"></span>підтверджено тобою<br>
-    Тапни на хід — унизу з'явиться позиція перед ним і список легальних ходів.
-  </div>
-  <div class="row" style="margin-top:10px">
-    <button class="ghost tiny" id="btnReset">Скинути мої виправлення</button>
-  </div>
 </div>
 
-<div class="panel" id="pEng" hidden>
-  <h2>Аналіз двигуном <em id="engModel"></em></h2>
-  <div class="row">
-    <button class="ghost" id="btnEng">Проаналізувати партію</button>
-    <button class="ghost tiny" id="btnEngStop" hidden>Зупинити</button>
-  </div>
-  <div class="prog" id="engProg" hidden><i id="engBar"></i></div>
-  <div class="status" id="engSt">Оцінює кожну позицію й позначає зівки. Двигун нічого не виправляє сам.</div>
+<div id="status">
+  <span><span class="dot" id="dPdf"></span><span id="pdfTxt">pdf.js вантажиться…</span></span>
+  <span><span class="dot" id="dEng"></span><span id="engTxt">двигун вантажиться…</span></span>
+  <span id="msg"></span>
 </div>
 
-<div class="panel" id="pOut" hidden>
-  <h2>PGN</h2>
-  <textarea id="pgn" readonly></textarea>
-  <div class="row" style="margin-top:10px">
-    <button id="btnCopy">Копіювати</button>
-    <button class="ghost" id="btnSave">Зберегти .pgn</button>
-    <button class="ghost" id="btnLichess">Аналіз на Lichess</button>
-    <button class="ghost" id="btnAdd">Додати в збірку</button>
-  </div>
-</div>
-
-<div class="panel" id="pColl" hidden>
-  <h2>Збірка туру <em id="collCount"></em></h2>
-  <ul class="games" id="collList"></ul>
-  <div class="row" style="margin-top:10px">
-    <button class="ghost" id="btnCollSave">Вивантажити всі партії</button>
-    <button class="ghost tiny" id="btnCollClear">Очистити</button>
-  </div>
-</div>
-
-<footer>
-  Фігури — набір cburnett, Colin M. L. Burnett, GPLv2+, з проєкту Lichess.<br>
-  Розбір ходів — chess.js. Розпізнавання — Gemini.
-</footer>
-</div>
-
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
 <script>
-const PIECES={"bB": "data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2045%2045%22%3E%3Cg%20fill%3D%22none%22%20fill-rule%3D%22evenodd%22%20stroke%3D%22%23000%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-width%3D%221.5%22%3E%3Cg%20fill%3D%22%23000%22%20stroke-linecap%3D%22butt%22%3E%3Cpath%20d%3D%22M9%2036c3.4-1%2010.1.4%2013.5-2%203.4%202.4%2010.1%201%2013.5%202%200%200%201.6.5%203%202-.7%201-1.6%201-3%20.5-3.4-1-10.1.5-13.5-1-3.4%201.5-10.1%200-13.5%201-1.4.5-2.3.5-3-.5%201.4-2%203-2%203-2z%22%2F%3E%3Cpath%20d%3D%22M15%2032c2.5%202.5%2012.5%202.5%2015%200%20.5-1.5%200-2%200-2%200-2.5-2.5-4-2.5-4%205.5-1.5%206-11.5-5-15.5-11%204-10.5%2014-5%2015.5%200%200-2.5%201.5-2.5%204%200%200-.5.5%200%202z%22%2F%3E%3Cpath%20d%3D%22M25%208a2.5%202.5%200%201%201-5%200%202.5%202.5%200%201%201%205%200z%22%2F%3E%3C%2Fg%3E%3Cpath%20stroke%3D%22%23ececec%22%20stroke-linejoin%3D%22miter%22%20d%3D%22M17.5%2026h10M15%2030h15m-7.5-14.5v5M20%2018h5%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E", "bK": "data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2045%2045%22%3E%3Cg%20fill%3D%22none%22%20fill-rule%3D%22evenodd%22%20stroke%3D%22%23000%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-width%3D%221.5%22%3E%3Cpath%20stroke-linejoin%3D%22miter%22%20d%3D%22M22.5%2011.6V6%22%2F%3E%3Cpath%20fill%3D%22%23000%22%20stroke-linecap%3D%22butt%22%20stroke-linejoin%3D%22miter%22%20d%3D%22M22.5%2025s4.5-7.5%203-10.5c0%200-1-2.5-3-2.5s-3%202.5-3%202.5c-1.5%203%203%2010.5%203%2010.5%22%2F%3E%3Cpath%20fill%3D%22%23000%22%20d%3D%22M11.5%2037a22.3%2022.3%200%200%200%2021%200v-7s9-4.5%206-10.5c-4-6.5-13.5-3.5-16%204V27v-3.5c-3.5-7.5-13-10.5-16-4-3%206%205%2010%205%2010z%22%2F%3E%3Cpath%20stroke-linejoin%3D%22miter%22%20d%3D%22M20%208h5%22%2F%3E%3Cpath%20stroke%3D%22%23ececec%22%20d%3D%22M32%2029.5s8.5-4%206-9.7C34.1%2014%2025%2018%2022.5%2024.6v2.1-2.1C20%2018%209.9%2014%207%2019.9c-2.5%205.6%204.8%209%204.8%209%22%2F%3E%3Cpath%20stroke%3D%22%23ececec%22%20d%3D%22M11.5%2030c5.5-3%2015.5-3%2021%200m-21%203.5c5.5-3%2015.5-3%2021%200m-21%203.5c5.5-3%2015.5-3%2021%200%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E", "bN": "data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2045%2045%22%3E%3Cg%20fill%3D%22none%22%20fill-rule%3D%22evenodd%22%20stroke%3D%22%23000%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-width%3D%221.5%22%3E%3Cpath%20fill%3D%22%23000%22%20d%3D%22M22%2010c10.5%201%2016.5%208%2016%2029H15c0-9%2010-6.5%208-21%22%2F%3E%3Cpath%20fill%3D%22%23000%22%20d%3D%22M24%2018c.38%202.91-5.55%207.37-8%209-3%202-2.82%204.34-5%204-1.04-.94%201.41-3.04%200-3-1%200%20.19%201.23-1%202-1%200-4%201-4-4%200-2%206-12%206-12s1.89-1.9%202-3.5c-.73-1-.5-2-.5-3%201-1%203%202.5%203%202.5h2s.78-2%202.5-3c1%200%201%203%201%203%22%2F%3E%3Cpath%20fill%3D%22%23ececec%22%20stroke%3D%22%23ececec%22%20d%3D%22M9.5%2025.5a.5.5%200%201%201-1%200%20.5.5%200%201%201%201%200m5.43-9.75a.5%201.5%2030%201%201-.86-.5.5%201.5%2030%201%201%20.86.5%22%2F%3E%3Cpath%20fill%3D%22%23ececec%22%20stroke%3D%22none%22%20d%3D%22m24.55%2010.4-.45%201.45.5.15c3.15%201%205.65%202.49%207.9%206.75S35.75%2029.06%2035.25%2039l-.05.5h2.25l.05-.5c.5-10.06-.88-16.85-3.25-21.34s-5.79-6.64-9.19-7.16z%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E", "bP": "data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2045%2045%22%3E%3Cpath%20stroke%3D%22%23000%22%20stroke-linecap%3D%22round%22%20stroke-width%3D%221.5%22%20d%3D%22M22.5%209a4%204%200%200%200-3.22%206.38%206.48%206.48%200%200%200-.87%2010.65c-3%201.06-7.41%205.55-7.41%2013.47h23c0-7.92-4.41-12.41-7.41-13.47a6.46%206.46%200%200%200-.87-10.65A4.01%204.01%200%200%200%2022.5%209z%22%2F%3E%3C%2Fsvg%3E", "bQ": "data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2045%2045%22%3E%3Cg%20fill-rule%3D%22evenodd%22%20stroke%3D%22%23000%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-width%3D%221.5%22%3E%3Cg%20stroke%3D%22none%22%3E%3Ccircle%20cx%3D%226%22%20cy%3D%2212%22%20r%3D%222.75%22%2F%3E%3Ccircle%20cx%3D%2214%22%20cy%3D%229%22%20r%3D%222.75%22%2F%3E%3Ccircle%20cx%3D%2222.5%22%20cy%3D%228%22%20r%3D%222.75%22%2F%3E%3Ccircle%20cx%3D%2231%22%20cy%3D%229%22%20r%3D%222.75%22%2F%3E%3Ccircle%20cx%3D%2239%22%20cy%3D%2212%22%20r%3D%222.75%22%2F%3E%3C%2Fg%3E%3Cpath%20stroke-linecap%3D%22butt%22%20d%3D%22M9%2026c8.5-1.5%2021-1.5%2027%200l2.5-12.5L31%2025l-.3-14.1-5.2%2013.6-3-14.5-3%2014.5-5.2-13.6L14%2025%206.5%2013.5z%22%2F%3E%3Cpath%20stroke-linecap%3D%22butt%22%20d%3D%22M9%2026c0%202%201.5%202%202.5%204%201%201.5%201%201%20.5%203.5-1.5%201-1.5%202.5-1.5%202.5-1.5%201.5.5%202.5.5%202.5%206.5%201%2016.5%201%2023%200%200%200%201.5-1%200-2.5%200%200%20.5-1.5-1-2.5-.5-2.5-.5-2%20.5-3.5%201-2%202.5-2%202.5-4-8.5-1.5-18.5-1.5-27%200z%22%2F%3E%3Cpath%20fill%3D%22none%22%20stroke-linecap%3D%22butt%22%20d%3D%22M11%2038.5a35%2035%201%200%200%2023%200%22%2F%3E%3Cpath%20fill%3D%22none%22%20stroke%3D%22%23ececec%22%20d%3D%22M11%2029a35%2035%201%200%201%2023%200m-21.5%202.5h20m-21%203a35%2035%201%200%200%2022%200m-23%203a35%2035%201%200%200%2024%200%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E", "bR": "data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2045%2045%22%3E%3Cg%20fill-rule%3D%22evenodd%22%20stroke%3D%22%23000%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-width%3D%221.5%22%3E%3Cpath%20stroke-linecap%3D%22butt%22%20d%3D%22M9%2039h27v-3H9zm3.5-7%201.5-2.5h17l1.5%202.5zm-.5%204v-4h21v4z%22%2F%3E%3Cpath%20stroke-linecap%3D%22butt%22%20stroke-linejoin%3D%22miter%22%20d%3D%22M14%2029.5v-13h17v13z%22%2F%3E%3Cpath%20stroke-linecap%3D%22butt%22%20d%3D%22M14%2016.5%2011%2014h23l-3%202.5zM11%2014V9h4v2h5V9h5v2h5V9h4v5z%22%2F%3E%3Cpath%20fill%3D%22none%22%20stroke%3D%22%23ececec%22%20stroke-linejoin%3D%22miter%22%20stroke-width%3D%221%22%20d%3D%22M12%2035.5h21m-20-4h19m-18-2h17m-17-13h17M11%2014h23%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E", "wB": "data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2045%2045%22%3E%3Cg%20fill%3D%22none%22%20fill-rule%3D%22evenodd%22%20stroke%3D%22%23000%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-width%3D%221.5%22%3E%3Cg%20fill%3D%22%23fff%22%20stroke-linecap%3D%22butt%22%3E%3Cpath%20d%3D%22M9%2036c3.39-.97%2010.11.43%2013.5-2%203.39%202.43%2010.11%201.03%2013.5%202%200%200%201.65.54%203%202-.68.97-1.65.99-3%20.5-3.39-.97-10.11.46-13.5-1-3.39%201.46-10.11.03-13.5%201-1.35.49-2.32.47-3-.5%201.35-1.94%203-2%203-2z%22%2F%3E%3Cpath%20d%3D%22M15%2032c2.5%202.5%2012.5%202.5%2015%200%20.5-1.5%200-2%200-2%200-2.5-2.5-4-2.5-4%205.5-1.5%206-11.5-5-15.5-11%204-10.5%2014-5%2015.5%200%200-2.5%201.5-2.5%204%200%200-.5.5%200%202z%22%2F%3E%3Cpath%20d%3D%22M25%208a2.5%202.5%200%201%201-5%200%202.5%202.5%200%201%201%205%200z%22%2F%3E%3C%2Fg%3E%3Cpath%20stroke-linejoin%3D%22miter%22%20d%3D%22M17.5%2026h10M15%2030h15m-7.5-14.5v5M20%2018h5%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E", "wK": "data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2045%2045%22%3E%3Cg%20fill%3D%22none%22%20fill-rule%3D%22evenodd%22%20stroke%3D%22%23000%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-width%3D%221.5%22%3E%3Cpath%20stroke-linejoin%3D%22miter%22%20d%3D%22M22.5%2011.63V6M20%208h5%22%2F%3E%3Cpath%20fill%3D%22%23fff%22%20stroke-linecap%3D%22butt%22%20stroke-linejoin%3D%22miter%22%20d%3D%22M22.5%2025s4.5-7.5%203-10.5c0%200-1-2.5-3-2.5s-3%202.5-3%202.5c-1.5%203%203%2010.5%203%2010.5%22%2F%3E%3Cpath%20fill%3D%22%23fff%22%20d%3D%22M11.5%2037c5.5%203.5%2015.5%203.5%2021%200v-7s9-4.5%206-10.5c-4-6.5-13.5-3.5-16%204V27v-3.5c-3.5-7.5-13-10.5-16-4-3%206%205%2010%205%2010z%22%2F%3E%3Cpath%20d%3D%22M11.5%2030c5.5-3%2015.5-3%2021%200m-21%203.5c5.5-3%2015.5-3%2021%200m-21%203.5c5.5-3%2015.5-3%2021%200%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E", "wN": "data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2045%2045%22%3E%3Cg%20fill%3D%22none%22%20fill-rule%3D%22evenodd%22%20stroke%3D%22%23000%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-width%3D%221.5%22%3E%3Cpath%20fill%3D%22%23fff%22%20d%3D%22M22%2010c10.5%201%2016.5%208%2016%2029H15c0-9%2010-6.5%208-21%22%2F%3E%3Cpath%20fill%3D%22%23fff%22%20d%3D%22M24%2018c.38%202.91-5.55%207.37-8%209-3%202-2.82%204.34-5%204-1.042-.94%201.41-3.04%200-3-1%200%20.19%201.23-1%202-1%200-4.003%201-4-4%200-2%206-12%206-12s1.89-1.9%202-3.5c-.73-.994-.5-2-.5-3%201-1%203%202.5%203%202.5h2s.78-1.992%202.5-3c1%200%201%203%201%203%22%2F%3E%3Cpath%20fill%3D%22%23000%22%20d%3D%22M9.5%2025.5a.5.5%200%201%201-1%200%20.5.5%200%201%201%201%200m5.433-9.75a.5%201.5%2030%201%201-.866-.5.5%201.5%2030%201%201%20.866.5%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E", "wP": "data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2045%2045%22%3E%3Cpath%20fill%3D%22%23fff%22%20stroke%3D%22%23000%22%20stroke-linecap%3D%22round%22%20stroke-width%3D%221.5%22%20d%3D%22M22.5%209c-2.21%200-4%201.79-4%204%200%20.89.29%201.71.78%202.38C17.33%2016.5%2016%2018.59%2016%2021c0%202.03.94%203.84%202.41%205.03-3%201.06-7.41%205.55-7.41%2013.47h23c0-7.92-4.41-12.41-7.41-13.47%201.47-1.19%202.41-3%202.41-5.03%200-2.41-1.33-4.5-3.28-5.62.49-.67.78-1.49.78-2.38%200-2.21-1.79-4-4-4z%22%2F%3E%3C%2Fsvg%3E", "wQ": "data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2045%2045%22%3E%3Cg%20fill%3D%22%23fff%22%20fill-rule%3D%22evenodd%22%20stroke%3D%22%23000%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-width%3D%221.5%22%3E%3Cpath%20d%3D%22M8%2012a2%202%200%201%201-4%200%202%202%200%201%201%204%200m16.5-4.5a2%202%200%201%201-4%200%202%202%200%201%201%204%200M41%2012a2%202%200%201%201-4%200%202%202%200%201%201%204%200M16%208.5a2%202%200%201%201-4%200%202%202%200%201%201%204%200M33%209a2%202%200%201%201-4%200%202%202%200%201%201%204%200%22%2F%3E%3Cpath%20stroke-linecap%3D%22butt%22%20d%3D%22M9%2026c8.5-1.5%2021-1.5%2027%200l2-12-7%2011V11l-5.5%2013.5-3-15-3%2015-5.5-14V25L7%2014z%22%2F%3E%3Cpath%20stroke-linecap%3D%22butt%22%20d%3D%22M9%2026c0%202%201.5%202%202.5%204%201%201.5%201%201%20.5%203.5-1.5%201-1.5%202.5-1.5%202.5-1.5%201.5.5%202.5.5%202.5%206.5%201%2016.5%201%2023%200%200%200%201.5-1%200-2.5%200%200%20.5-1.5-1-2.5-.5-2.5-.5-2%20.5-3.5%201-2%202.5-2%202.5-4-8.5-1.5-18.5-1.5-27%200z%22%2F%3E%3Cpath%20fill%3D%22none%22%20d%3D%22M11.5%2030c3.5-1%2018.5-1%2022%200M12%2033.5c6-1%2015-1%2021%200%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E", "wR": "data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2045%2045%22%3E%3Cg%20fill%3D%22%23fff%22%20fill-rule%3D%22evenodd%22%20stroke%3D%22%23000%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-width%3D%221.5%22%3E%3Cpath%20stroke-linecap%3D%22butt%22%20d%3D%22M9%2039h27v-3H9zm3-3v-4h21v4zm-1-22V9h4v2h5V9h5v2h5V9h4v5%22%2F%3E%3Cpath%20d%3D%22m34%2014-3%203H14l-3-3%22%2F%3E%3Cpath%20stroke-linecap%3D%22butt%22%20stroke-linejoin%3D%22miter%22%20d%3D%22M31%2017v12.5H14V17%22%2F%3E%3Cpath%20d%3D%22m31%2029.5%201.5%202.5h-20l1.5-2.5%22%2F%3E%3Cpath%20fill%3D%22none%22%20stroke-linejoin%3D%22miter%22%20d%3D%22M11%2014h23%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E"};
+const $ = id => document.getElementById(id);
+const msg = t => $("msg").innerHTML = t;
 
-/* ---------- нормалізація українського запису ---------- */
-const CH={'а':'a','в':'b','с':'c','е':'e','к':'k','м':'m','н':'h','о':'o','р':'p','т':'t','у':'y','х':'x','і':'1','ь':''};
-function norm(t){
-  if(t===null||t===undefined) return '';
-  let s=String(t).trim().replace(/\s+/g,'').replace(/[!?.]+$/,'');
-  if(!s||s==='-'||s==='—') return '';
-  s=s.replace(/^[0OО]-[0OО]-[0OО]$/i,'O-O-O').replace(/^[0OО]-[0OО]$/i,'O-O');
-  if(/^O-O(-O)?$/.test(s)) return s;
-  s=s.replace(/^Кр/,'K').replace(/^Ф/,'Q').replace(/^Т/,'R').replace(/^С/,'B').replace(/^К/,'N');
-  let out=s[0];
-  for(let i=1;i<s.length;i++){const c=s[i];out+=(CH[c]!==undefined?CH[c]:c);}
-  return out;
+/* Воркер із чужого домену створити не можна. Найнадійніше — крихітний
+   локальний blob-воркер, який сам робить importScripts на CDN:
+   не залежить ані від CORS, ані від connect-src у CSP. */
+const DIAG = [];
+function shimWorkerUrl(url){
+  const code = 'try{importScripts("'+url+'")}catch(e){postMessage("SHIM_FAIL:"+e.message)}';
+  return URL.createObjectURL(new Blob([code],{type:"application/javascript"}));
 }
-function variants(san){
-  const b=san.replace(/[+#]/g,'').replace(/=/,'');
-  const v=new Set([b,b.replace('x',''),b.replace('x',':')]);
-  const m=b.match(/^([a-h])x([a-h])([1-8])$/);
-  if(m){v.add(m[1]+m[2]);v.add(m[1]+m[2]+m[3]);}
-  const p=b[0];
-  if('KQRBN'.includes(p)){const R={K:'Kp',Q:'F',R:'T',B:'C',N:'K'};[...v].forEach(x=>v.add(R[p]+x.slice(1)));}
-  return [...v];
-}
-const CONF=[['5','S','s'],['0','O','o'],['6','b','h'],['1','l','i'],['c','e'],['a','o'],['g','q','9'],['4','y'],['f','t'],['3','z']];
-function cost(a,b){if(a===b)return 0;for(const g of CONF)if(g.includes(a)&&g.includes(b))return .3;return 1;}
-function lev(a,b){
-  const n=a.length,m=b.length,d=[];
-  for(let i=0;i<=n;i++){d.push(new Array(m+1).fill(0));d[i][0]=i;}
-  for(let j=0;j<=m;j++)d[0][j]=j;
-  for(let i=1;i<=n;i++)for(let j=1;j<=m;j++)
-    d[i][j]=Math.min(d[i-1][j]+1,d[i][j-1]+1,d[i-1][j-1]+cost(a[i-1],b[j-1]));
-  return d[n][m];
-}
-function score(tok,san){let b=99;for(const v of variants(san))b=Math.min(b,lev(tok,v));return b;}
-
-/* кеші: живуть весь сеанс, тому кожне наступне виправлення майже миттєве */
-const C_MOVES=new Map(), C_NEXT=new Map(), C_SCORE=new Map();
-function sansOf(fen){
-  let a=C_MOVES.get(fen);
-  if(!a){ a=new Chess(fen).moves(); C_MOVES.set(fen,a); }
-  return a;
-}
-function nextFen(fen,san){
-  const k=fen+'|'+san;
-  let f=C_NEXT.get(k);
-  if(!f){ const g=new Chess(fen); g.move(san); f=g.fen(); C_NEXT.set(k,f); }
-  return f;
-}
-function sc(tok,san){
-  const k=tok+'\u0001'+san;
-  let v=C_SCORE.get(k);
-  if(v===undefined){ v=score(tok,san); C_SCORE.set(k,v); }
-  return v;
-}
-
-/* ---------- пошук по променю з урахуванням правил ---------- */
-const CUT=3.2, WIDTH=140, BLANK=1.7;
-function solve(tokens,anchors){
-  let beams=[{cost:0,fen:new Chess().fen(),path:[]}];
-  let stopped=-1;
-  for(let i=0;i<tokens.length;i++){
-    const tok=norm(tokens[i]);
-    const anc=anchors[i];
-    const cand=[];
-    for(const b of beams){
-      for(const san of sansOf(b.fen)){
-        let c;
-        if(anc){ if(san!==anc) continue; c=0; }
-        else { c=tok?sc(tok,san):BLANK; if(c>CUT) continue; }
-        cand.push({cost:b.cost+c,parent:b,san,c});
-      }
-    }
-    if(!cand.length){stopped=i;break;}
-    cand.sort((x,y)=>x.cost-y.cost);
-    // позиції рахуємо лише для найкращих, однакові позиції зливаємо
-    const seen=new Map();
-    for(const x of cand){
-      if(seen.size>=WIDTH) break;
-      const f=nextFen(x.parent.fen,x.san);
-      if(seen.has(f)) continue;
-      seen.set(f,{cost:x.cost,fen:f,path:x.parent.path.concat([{tok,san:x.san,c:x.c}])});
-    }
-    beams=[...seen.values()];
+async function fetchWorkerUrl(urls){          // запасний шлях, якщо importScripts не пустять
+  for(const u of urls){
+    try{
+      const r = await fetch(u);
+      if(!r.ok){ DIAG.push("fetch "+r.status+" "+u); continue; }
+      const code = await r.text();
+      if(code.length < 1000){ DIAG.push("замалий файл "+u); continue; }
+      return URL.createObjectURL(new Blob([code],{type:"application/javascript"}));
+    }catch(e){ DIAG.push("fetch впав: "+u+" — "+e.message); }
   }
-  return {path:beams[0].path,stopped};
+  return null;
 }
+
+const PDF_WORKERS = [
+  "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js",
+  "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js",
+  "https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.worker.min.js"
+];
+
+function loadScript(src){
+  return new Promise((res,rej)=>{
+    const s=document.createElement("script");
+    s.src=src; s.onload=()=>res(true);
+    s.onerror=()=>rej(new Error("скрипт не завантажився: "+src));
+    document.head.appendChild(s);
+  });
+}
+/* Останній рубіж: pdf.worker.min.js, підвантажений як звичайний скрипт,
+   реєструє глобал pdfjsWorker — і pdf.js рахує сторінку на головному потоці,
+   взагалі без Worker. Повільніше, зате працює за будь-якої політики безпеки. */
+async function ensureMainThreadWorker(){
+  if(window.pdfjsWorker) return true;
+  for(const u of PDF_WORKERS){
+    try{ await loadScript(u); if(window.pdfjsWorker) return true; }
+    catch(e){ DIAG.push(e.message); }
+  }
+  return false;
+}
+
+let pdfReady = false;
+(function initPdf(){
+  if(typeof pdfjsLib === "undefined"){
+    DIAG.push("pdf.js не завантажився з CDN");
+    $("dPdf").className="dot err"; $("pdfTxt").textContent="pdf.js не завантажився";
+    return;
+  }
+  pdfjsLib.GlobalWorkerOptions.workerSrc = shimWorkerUrl(PDF_WORKERS[0]);
+  pdfReady = true;
+  $("dPdf").className="dot on"; $("pdfTxt").textContent="pdf.js готовий";
+})();
 
 /* ---------- стан ---------- */
-let TOKENS=[],ANCHORS={},SOLVED=[],IMAGES=[],SEL=-1,FLIP=false,COLL=[];
-const $=id=>document.getElementById(id);
+const START = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+const S = {
+  pdf:null, page:1, total:0, fileKey:"",
+  segs:[], flat:[], idx:-1,
+  fen:START, hl:[], flip:false,
+  cache:new Map()      // на Netlify міняється на IndexedDB
+};
 
-function shiftAnchors(at,delta){
-  const n={};
-  for(const k in ANCHORS){const i=+k;n[i<at?i:i+delta]=ANCHORS[k];}
-  ANCHORS=n;
-}
-
-function rerun(keepSel){
-  engStop();
-  const t0=performance.now();
-  const r=solve(TOKENS,ANCHORS);
-  const ms=Math.round(performance.now()-t0);
-  SOLVED=r.path;
-  const doubt=SOLVED.filter((s,i)=>!ANCHORS[i]&&s.c>=1.2).length;
-  const st=$('st');
-  if(r.stopped>=0){
-    st.className='status err';
-    st.textContent=`Запис не сходиться на півході ${r.stopped+1}: жоден легальний хід не схожий на написане. Виправ попередній хід або вважай, що бланк обірвано тут.`;
-  }else{
-    st.className='status '+(doubt?'':'ok');
-    st.textContent=`Розібрано ${SOLVED.length} півходів. Ненадійних: ${doubt}. Підтверджено вручну: ${Object.keys(ANCHORS).length}. Перерахунок ${ms} мс.`;
+/* ---------- дошка: фігури cburnett з лічеса ---------- */
+const PIECES = "https://cdn.jsdelivr.net/gh/lichess-org/lila@master/public/piece/cburnett/";
+const UNI = {k:"♚",q:"♛",r:"♜",b:"♝",n:"♞",p:"♟"};
+function drawBoard(fen, hl){
+  hl = hl || [];
+  const grid = [];
+  for(const row of fen.split(" ")[0].split("/")){
+    const line = [];
+    for(const ch of row){
+      if(/\d/.test(ch)){ for(let i=0;i<+ch;i++) line.push(null); }
+      else line.push(ch);
+    }
+    grid.push(line);
   }
-  if(!keepSel||SEL>=SOLVED.length) SEL=SOLVED.length-1;
-  render();
-}
-
-function render(){
-  const tb=$('tb');tb.innerHTML='';
-  for(let i=0;i<SOLVED.length;i+=2){
-    const tr=document.createElement('tr');
-    const n=document.createElement('td');n.className='num';n.textContent=i/2+1;tr.appendChild(n);
-    for(const j of [i,i+1]){
-      const td=document.createElement('td');
-      if(SOLVED[j]){
-        const s=SOLVED[j];
-        td.className='mv '+(ANCHORS[j]?'anchor':(s.c===0?'':(s.c<1.2?'fixed':'doubt')))+(j===SEL?' sel':'');
-        td.appendChild(document.createTextNode(s.san));
-        if(s.tok&&s.tok!==s.san){const r=document.createElement('span');r.className='raw';r.textContent=s.tok;td.appendChild(r);}
-        else if(!s.tok){const r=document.createElement('span');r.className='raw';r.textContent='порожньо';td.appendChild(r);}
-        if(s.ev!==undefined){
-          const e=document.createElement('span');e.className='ev';
-          const mark=s.loss>=300?'<b class="bl">??</b> ':(s.loss>=150?'<b class="ms">?</b> ':(s.loss>=80?'?! ':''));
-          e.innerHTML=mark+fmtEval(s.ev);
-          td.appendChild(e);
-          if(s.loss>=300&&!ANCHORS[j]&&s.c>=1.2) td.classList.add('suspect');
-        }
-        td.onclick=()=>{SEL=j;render();$('pBoard').scrollIntoView({behavior:'smooth',block:'nearest'});};
+  const board = $("board"); board.innerHTML="";
+  for(let vr=0; vr<8; vr++){
+    for(let vc=0; vc<8; vc++){
+      const r = S.flip ? 7-vr : vr;        // r=0 — восьма горизонталь
+      const f = S.flip ? 7-vc : vc;
+      const name = "abcdefgh"[f] + (8-r);
+      const sq = document.createElement("div");
+      sq.className = "sq " + ((r+f)%2 ? "d" : "l") + (hl.includes(name) ? " hl" : "");
+      const pc = grid[r] ? grid[r][f] : null;
+      if(pc){
+        const img = document.createElement("img");
+        img.src = PIECES + (pc === pc.toUpperCase() ? "w" : "b") + pc.toUpperCase() + ".svg";
+        img.alt = pc; img.draggable = false;
+        img.onerror = () => {                       // немає мережі — юнікод
+          const s = document.createElement("span");
+          s.className = "uni " + (pc === pc.toUpperCase() ? "w" : "b");
+          s.textContent = UNI[pc.toLowerCase()];
+          img.replaceWith(s);
+        };
+        sq.appendChild(img);
       }
-      tr.appendChild(td);
-    }
-    tb.appendChild(tr);
-  }
-  $('mvCount').textContent=SOLVED.length?`${Math.ceil(SOLVED.length/2)} ходів`:'';
-  $('pMoves').hidden=!SOLVED.length;
-  $('pEng').hidden=!SOLVED.length;
-  drawShot();
-  $('pBoard').hidden=!SOLVED.length;
-  drawBoard();
-  drawCands();
-  buildPgn();
-}
-
-function stateAt(ply){const g=new Chess();for(let i=0;i<ply;i++)g.move(SOLVED[i].san);return g;}
-
-function drawBoard(){
-  const g=stateAt(SEL+1);
-  const hist=g.history({verbose:true});
-  const last=hist.length?hist[hist.length-1]:null;
-  const rows=g.fen().split(' ')[0].split('/');
-  const grid=[];
-  rows.forEach(r=>{const line=[];for(const ch of r){if(/\d/.test(ch)){for(let k=0;k<+ch;k++)line.push(null);}else line.push(ch);}grid.push(line);});
-  const files='abcdefgh'.split('');
-  const el=$('board');el.innerHTML='';
-  const order=FLIP?[...Array(8).keys()].reverse():[...Array(8).keys()];
-  for(const ri of order){
-    const fo=FLIP?[...Array(8).keys()].reverse():[...Array(8).keys()];
-    for(const fi of fo){
-      const d=document.createElement('div');
-      d.className='sq '+((ri+fi)%2?'dk':'lt');
-      const sq=files[fi]+(8-ri);
-      const p=grid[ri][fi];
-      if(p){const key=(p===p.toUpperCase()?'w':'b')+p.toUpperCase();d.style.backgroundImage=`url("${PIECES[key]}")`;}
-      if(last&&(last.from===sq||last.to===sq)) d.classList.add('hl');
-      if(fi===(FLIP?0:7)){const c=document.createElement('span');c.className='co f';c.textContent=8-ri;d.appendChild(c);}
-      if(ri===(FLIP?0:7)){const c=document.createElement('span');c.className='co r';c.textContent=files[fi];d.appendChild(c);}
-      el.appendChild(d);
+      if(vr===7){ const c=document.createElement("span"); c.className="co f"; c.textContent="abcdefgh"[f]; sq.appendChild(c); }
+      if(vc===0){ const c=document.createElement("span"); c.className="co r"; c.textContent=8-r; sq.appendChild(c); }
+      board.appendChild(sq);
     }
   }
-  const num=Math.floor(SEL/2)+1;
-  $('bTitle').textContent=SEL<0?'початкова':`${num}${SEL%2?'…':'.'} ${SOLVED[SEL].san}`;
-  $('posInfo').textContent=`півхід ${SEL+1} з ${SOLVED.length}`;
-  $('nPrev').disabled=SEL<0;$('nFirst').disabled=SEL<0;
-  $('nNext').disabled=SEL>=SOLVED.length-1;$('nLast').disabled=SEL>=SOLVED.length-1;
+  $("fenIn").value = fen;
+}
+function setFen(fen, hl, skipEval){
+  S.fen=fen; S.hl=hl||[];
+  drawBoard(fen,S.hl);
+  if(!skipEval && $("autoEval").checked) analyse(fen);
 }
 
-function drawCands(){
-  const zone=$('editZone');
-  if(SEL<0){zone.hidden=true;return;}
-  zone.hidden=false;
-  const g=stateAt(SEL);
-  const tok=SOLVED[SEL].tok||'';
-  $('candHint').textContent=tok?`На бланку: ${tok}`:'Комірка порожня або нерозбірлива';
-  const box=$('cands');box.innerHTML='';
-  g.moves().map(s=>({s,c:tok?score(tok,s):9})).sort((a,b)=>a.c-b.c).forEach(({s,c})=>{
-    const b=document.createElement('button');b.textContent=s;if(tok&&c<1)b.className='top';
-    b.onclick=()=>{ANCHORS[SEL]=s;rerun(true);};
-    box.appendChild(b);
+/* ---------- кирилична нотація -> SAN ---------- */
+const HOMO = {"а":"a","с":"c","е":"e","р":"p","х":"x","у":"y","і":"i","ѕ":"s"};
+function toSAN(raw){
+  let s = String(raw).trim();
+  s = s.replace(/^\d+\s*[.．]+\s*/,"").replace(/^\.{2,3}\s*/,"");
+  s = s.replace(/[!?±∓⩲⩱→↑⊕□∞]+/g,"").replace(/\s+/g,"");
+  if(/^[оО0O]\s*-\s*[оО0O]\s*-\s*[оО0O]/.test(s)) return "O-O-O";
+  if(/^[оО0O]\s*-\s*[оО0O]/.test(s)) return "O-O";
+  s = s.replace(/^(Кр|КР|Kp)/,"K");            // король — обов'язково до коня
+  s = s.replace(/^Ф/,"Q").replace(/^[ТЛ]/,"R").replace(/^С/,"B").replace(/^К/,"N");
+  s = s.replace(/^[пП]/,"");                   // «п» = пішак, у SAN не пишеться
+  s = s.replace(/=?([ФТЛСК])(?=[+#]?$)/, (_,p) => "=" + {"Ф":"Q","Т":"R","Л":"R","С":"B","К":"N"}[p]); // перетворення
+  s = s.replace(/[х:×]/g,"x");
+  s = s.split("").map(c => HOMO[c] || c).join("");
+  return s.replace(/[^KQRBNa-h1-8xO=+#-]/g,"");
+}
+function lev(a,b){
+  const m=[...Array(a.length+1)].map((_,i)=>[i,...Array(b.length).fill(0)]);
+  for(let j=0;j<=b.length;j++) m[0][j]=j;
+  for(let i=1;i<=a.length;i++) for(let j=1;j<=b.length;j++)
+    m[i][j]=Math.min(m[i-1][j]+1,m[i][j-1]+1,m[i-1][j-1]+(a[i-1]===b[j-1]?0:1));
+  return m[a.length][b.length];
+}
+function repair(game, san){
+  const clean = x => x.replace(/[+#]/g,"");
+  let best=[], bd=99;
+  for(const L of game.moves()){
+    const d = lev(clean(san), clean(L));
+    if(d<bd){ bd=d; best=[L]; } else if(d===bd) best.push(L);
+  }
+  return (bd<=2 && best.length===1) ? best[0] : null;
+}
+
+/* ---------- збірка партій ---------- */
+function buildSegments(tokens){
+  const segs=[]; let game=new Chess(), cur={title:"Партія 1",moves:[]}; segs.push(cur);
+  for(const t of tokens){
+    const raw=t.t||"";
+    const num=raw.match(/^(\d+)\s*[.．]/);
+    if(num && +num[1]===1 && cur.moves.length>2){
+      game=new Chess(); cur={title:"Партія "+(segs.length+1),moves:[]}; segs.push(cur);
+    }
+    const san=toSAN(raw); if(!san) continue;
+    let mv=null, status="ok";
+    try{ mv=game.move(san,{sloppy:true}); }catch(e){ mv=null; }
+    if(!mv){ const fix=repair(game,san); if(fix){ mv=game.move(fix); status="fixed"; } }
+    if(mv) cur.moves.push({san:mv.san,fen:game.fen(),hl:[mv.from,mv.to],box:t.b,raw,status});
+    else   cur.moves.push({san:san,fen:null,hl:[],box:t.b,raw,status:"bad"});
+  }
+  return segs.filter(s=>s.moves.length);
+}
+function renderMoves(){
+  S.flat=[];
+  const box=$("moves"); box.innerHTML="";
+  let ok=0,fx=0,bad=0;
+  for(const seg of S.segs){
+    const d=document.createElement("div"); d.className="seg";
+    const h=document.createElement("div"); h.className="segTitle"; h.textContent=seg.title; d.appendChild(h);
+    seg.moves.forEach((m,i)=>{
+      const el=document.createElement("span");
+      el.className="mv "+(m.status==="fixed"?"fixed":m.status==="bad"?"bad":"");
+      el.textContent=(i%2===0?(Math.floor(i/2)+1)+".":"")+m.san;
+      el.title = m.status==="fixed" ? "у книзі: "+m.raw+" — виправлено за правилами"
+               : m.status==="bad" ? "нелегальний хід: "+m.raw : m.raw;
+      const k=S.flat.length; el.onclick=()=>goto(k);
+      d.appendChild(el); S.flat.push(m);
+      if(m.status==="ok")ok++; else if(m.status==="fixed")fx++; else bad++;
+    });
+    box.appendChild(d);
+  }
+  $("mvStat").textContent = `${ok} чисто · ${fx} виправлено · ${bad} не читається`;
+  shareReady();
+  paintOverlay();
+}
+function goto(i){
+  if(i<0||i>=S.flat.length) return;
+  S.idx=i;
+  const m=S.flat[i];
+  if(m.fen) setFen(m.fen,m.hl);
+  document.querySelectorAll("#moves .mv").forEach((e,k)=>e.classList.toggle("cur",k===i));
+  paintOverlay();
+  const c=document.querySelector("#moves .mv.cur"); if(c) c.scrollIntoView({block:"nearest"});
+}
+
+/* ---------- накладка ---------- */
+let diagrams=[];
+function place(el,b){
+  const [x0,y0,x1,y1]=b;
+  el.style.left=(x0/10)+"%"; el.style.top=(y0/10)+"%";
+  el.style.width=((x1-x0)/10)+"%"; el.style.height=((y1-y0)/10)+"%";
+}
+function paintOverlay(){
+  const ov=$("overlay"); ov.innerHTML="";
+  S.flat.forEach((m,i)=>{
+    if(!m.box||m.box.length!==4) return;
+    const el=document.createElement("div");
+    el.className="hot"+(i===S.idx?" cur":"")+(m.status==="bad"?" bad":"");
+    place(el,m.box); el.title=m.san; el.onclick=()=>goto(i);
+    ov.appendChild(el);
+  });
+  diagrams.forEach(d=>{
+    if(!d.b||d.b.length!==4) return;
+    const el=document.createElement("div"); el.className="hot dia"; place(el,d.b);
+    el.title="Діаграма → на дошку (звір FEN)";
+    el.onclick=()=>{
+      const g=new Chess();
+      let f=(d.f||"").trim();
+      if(f && f.split(" ").length<4) f+=" w - - 0 1";
+      if(f && g.load(f)){ S.idx=-1; setFen(g.fen(),[]); msg("Позиція з діаграми поставлена. Звір із книгою."); }
+      else { $("fenIn").value=d.f||""; msg("FEN діаграми не пройшов перевірку — виправ у полі внизу."); }
+    };
+    ov.appendChild(el);
   });
 }
 
-$('nFirst').onclick=()=>{SEL=-1;render()};
-$('nPrev').onclick=()=>{if(SEL>=0){SEL--;render()}};
-$('nNext').onclick=()=>{if(SEL<SOLVED.length-1){SEL++;render()}};
-$('nLast').onclick=()=>{SEL=SOLVED.length-1;render()};
-$('nFlip').onclick=()=>{FLIP=!FLIP;drawBoard()};
-document.addEventListener('keydown',e=>{
-  if(!SOLVED.length||/INPUT|TEXTAREA/.test(document.activeElement.tagName))return;
-  if(e.key==='ArrowLeft'){$('nPrev').click();e.preventDefault();}
-  if(e.key==='ArrowRight'){$('nNext').click();e.preventDefault();}
-});
-$('btnClear').onclick=()=>{delete ANCHORS[SEL];rerun(true)};
-// показуємо, скільки часу зайняв перерахунок — щоб було видно, що він миттєвий
-$('btnReset').onclick=()=>{ANCHORS={};rerun(true)};
-$('btnInsert').onclick=()=>{TOKENS.splice(SEL,0,'');shiftAnchors(SEL,1);rerun(true)};
-$('btnDelete').onclick=()=>{TOKENS.splice(SEL,1);shiftAnchors(SEL+1,-1);delete ANCHORS[SEL];rerun(true)};
+/* ---------- відкриття PDF ---------- */
+async function openFile(f){
+  if(!f){ return; }
+  if(!/\.pdf$/i.test(f.name) && f.type!=="application/pdf"){
+    msg("Це не PDF. DjVu спершу конвертуй: ddjvu -format=pdf книга.djvu книга.pdf"); return;
+  }
+  if(!pdfReady){ msg("pdf.js не завантажився — натисни «Діагностика»."); return; }
+  msg('<span class="spin"></span> Відкриваю…');
+  S.fileKey=f.name+":"+f.size;
+  let buf;
+  try{ buf = await f.arrayBuffer(); }
+  catch(e){ msg("Файл не читається з диска: "+e.message); return; }
 
-/* ---------- PGN ---------- */
-let RESULT='*';
-$('resBtns').addEventListener('click',e=>{
-  const b=e.target.closest('button');if(!b)return;
-  RESULT=b.dataset.r;
-  [...$('resBtns').children].forEach(x=>x.setAttribute('aria-pressed',x===b));
-  buildPgn();
-});
-function buildPgn(){
-  const v=id=>$(id).value.trim();
-  let s=`[Event "${v('hEvent')||'?'}"]\n[Site "?"]\n[Date "${v('hDate')||'????.??.??'}"]\n`+
-        `[Round "${v('hRound')||'?'}"]\n[White "${v('hWhite')||'?'}"]\n[Black "${v('hBlack')||'?'}"]\n[Result "${RESULT}"]\n\n`;
-  let line='';
-  SOLVED.forEach((m,i)=>{if(i%2===0)line+=(i/2+1)+'. ';line+=m.san+' ';});
-  $('pgn').value=s+line+RESULT+'\n';
-  $('pOut').hidden=!SOLVED.length;
+  for(let attempt=0; attempt<3; attempt++){
+    try{
+      S.pdf = await pdfjsLib.getDocument({data:new Uint8Array(buf.slice(0))}).promise;
+      S.total=S.pdf.numPages;
+      $("pageTot").textContent="/ "+S.total;
+      $("pageNum").disabled=false; $("prevPg").disabled=false; $("nextPg").disabled=false; $("recog").disabled=false;
+      $("empty").hidden=true; $("pageWrap").hidden=false;
+      await showPage(1);
+      msg("Відкрито: "+f.name+" — "+S.total+" стор."+(window.pdfjsWorker?" (головний потік)":""));
+      return;
+    }catch(e){
+      console.error(e);
+      DIAG.push("getDocument спроба "+(attempt+1)+": "+(e&&e.message));
+      if(/password|пароль/i.test(e&&e.message||"")){
+        msg("PDF захищений паролем — зніми захист і спробуй ще раз."); return;
+      }
+      if(attempt===0){
+        const alt = await fetchWorkerUrl(PDF_WORKERS);
+        if(alt){ pdfjsLib.GlobalWorkerOptions.workerSrc = alt; msg('<span class="spin"></span> Пробую інакше…'); continue; }
+      }
+      if(attempt<=1){
+        msg('<span class="spin"></span> Перемикаюся на головний потік…');
+        const ok = await ensureMainThreadWorker();
+        if(ok){ $("pdfTxt").textContent="pdf.js (головний потік)"; continue; }
+      }
+      msg("Не вдалося відкрити: "+(e&&e.message?e.message:"невідома помилка")+". Натисни «Діагностика».");
+      return;
+    }
+  }
 }
-['hEvent','hWhite','hBlack','hDate','hRound'].forEach(id=>$(id).addEventListener('input',buildPgn));
-$('btnCopy').onclick=async()=>{await navigator.clipboard.writeText($('pgn').value);
-  $('btnCopy').textContent='Скопійовано';setTimeout(()=>$('btnCopy').textContent='Копіювати',1400);};
-function fname(){return (($('hWhite').value||'game')+'-'+($('hBlack').value||'')).replace(/\s+/g,'-')+'.pgn';}
-function download(text,name){
-  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type:'application/x-chess-pgn'}));
-  a.download=name;a.click();URL.revokeObjectURL(a.href);
-}
-$('btnSave').onclick=()=>download($('pgn').value,fname());
-$('btnLichess').onclick=async()=>{
-  try{ await navigator.clipboard.writeText($('pgn').value); }catch(e){}
-  $('btnLichess').textContent='PGN скопійовано — вставте Ctrl+V';
-  setTimeout(()=>$('btnLichess').textContent='Аналіз на Lichess',3000);
-  window.open('https://lichess.org/paste','_blank','noopener');
-};
+$("file").addEventListener("change", e => openFile(e.target.files[0]));
+const right=$("right");
+["dragenter","dragover"].forEach(ev=>right.addEventListener(ev,e=>{e.preventDefault();right.classList.add("drop")}));
+["dragleave","drop"].forEach(ev=>right.addEventListener(ev,e=>{e.preventDefault();right.classList.remove("drop")}));
+right.addEventListener("drop",e=>{ const f=e.dataTransfer.files[0]; if(f) openFile(f); });
 
-/* ---------- збірка туру ---------- */
-$('btnAdd').onclick=()=>{
-  COLL.push({name:`${$('hWhite').value||'?'} — ${$('hBlack').value||'?'}`,pgn:$('pgn').value});
-  drawColl();persist();
-};
-function drawColl(){
-  $('pColl').hidden=!COLL.length;
-  $('collCount').textContent=COLL.length?`${COLL.length} партій`:'';
-  const ul=$('collList');ul.innerHTML='';
-  COLL.forEach((g,i)=>{
-    const li=document.createElement('li');
-    const s=document.createElement('span');s.textContent=g.name;
-    const b=document.createElement('button');b.className='ghost tiny';b.textContent='×';
-    b.onclick=()=>{COLL.splice(i,1);drawColl();persist();};
-    li.append(s,b);ul.appendChild(li);
-  });
+async function showPage(n){
+  S.page=Math.max(1,Math.min(S.total,n));
+  $("pageNum").value=S.page;
+  const page=await S.pdf.getPage(S.page);
+  const base=page.getViewport({scale:1});
+  const scale=Math.min(2.2, 1400/base.width);
+  const vp=page.getViewport({scale});
+  const c=$("pdfCanvas"); c.width=vp.width; c.height=vp.height;
+  await page.render({canvasContext:c.getContext("2d"),viewport:vp}).promise;
+  S.segs=[]; S.flat=[]; S.idx=-1; diagrams=[];
+  $("moves").innerHTML='<div style="color:var(--ink-dim);font-family:var(--sans)">Сторінка ще не розпізнана.</div>';
+  $("mvStat").textContent=""; $("overlay").innerHTML="";
+  ["bPgn","bMail","bFb"].forEach(id=>$(id).disabled=true);
+  $("bShare").hidden=true;
+  const hit=S.cache.get(S.fileKey+"#"+S.page);
+  if(hit){ apply(hit); msg("Сторінка з кешу."); }
 }
-$('btnCollSave').onclick=()=>download(COLL.map(g=>g.pgn).join('\n'),'tur.pgn');
-$('btnCollClear').onclick=()=>{COLL=[];drawColl();persist();};
-async function persist(){try{await window.storage.set('coll',JSON.stringify(COLL));}catch(e){}}
-(async()=>{try{const r=await window.storage.get('coll');if(r&&r.value){COLL=JSON.parse(r.value);drawColl();}}catch(e){}})();
+$("prevPg").onclick=()=>showPage(S.page-1);
+$("nextPg").onclick=()=>showPage(S.page+1);
+$("pageNum").onchange=e=>showPage(+e.target.value||1);
+
+/* ---------- розпізнавання ---------- */
+const PROMPT = `Це сторінка друкованої шахової книги (українська або російська, стара радянська нотація).
+Знайди: (1) кожен окремий хід у нотації, (2) кожну діаграму шахівниці.
+bbox = [x0,y0,x1,y1], нормовані 0..1000 відносно ширини й висоти зображення.
+Ходи — у порядку читання, номер ходу разом із ходом ("24.Кf5").
+Для діаграми дай тільки перше поле FEN (розстановку).
+Відповідай ВИКЛЮЧНО JSON, без пояснень і markdown:
+{"m":[{"t":"24.Кf5","b":[0,0,0,0]}],"d":[{"f":"8/8/8/8/8/8/8/8","b":[0,0,0,0]}]}`;
+
+$("recog").onclick = async () => {
+  const btn=$("recog"); btn.disabled=true;
+  msg('<span class="spin"></span> Читаю сторінку…');
+  try{
+    const data=$("pdfCanvas").toDataURL("image/jpeg",.82).split(",")[1];
+    const r=await fetch("https://api.anthropic.com/v1/messages",{
+      method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:1000,messages:[{role:"user",content:[
+        {type:"image",source:{type:"base64",media_type:"image/jpeg",data}},
+        {type:"text",text:PROMPT}]}]})
+    });
+    const j=await r.json();
+    const text=(j.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("");
+    const clean=text.replace(/```json|```/g,"").trim();
+    const parsed=JSON.parse(clean.slice(clean.indexOf("{"),clean.lastIndexOf("}")+1));
+    S.cache.set(S.fileKey+"#"+S.page,parsed);
+    apply(parsed);
+    msg("Готово. Жовті ходи звір із книгою.");
+  }catch(err){
+    console.error(err);
+    msg("Відповідь моделі не розібралася. Спробуй ще раз — або сторінка задовга для одного запиту.");
+  }
+  btn.disabled=false;
+};
+function apply(parsed){
+  diagrams=parsed.d||[];
+  S.segs=buildSegments(parsed.m||[]);
+  renderMoves();
+  if(S.flat.length) goto(0); else paintOverlay();
+}
+
+/* ---------- навігація ---------- */
+$("bStart").onclick=()=>goto(0);
+$("bPrev").onclick=()=>goto(S.idx-1);
+$("bNext").onclick=()=>goto(S.idx+1);
+$("bEnd").onclick=()=>goto(S.flat.length-1);
+$("bFlip").onclick=()=>{S.flip=!S.flip;drawBoard(S.fen,S.hl)};
+document.addEventListener("keydown",e=>{
+  if(e.target.tagName==="INPUT"||e.target.tagName==="SELECT") return;
+  if(e.key==="ArrowRight"){goto(S.idx+1);e.preventDefault()}
+  if(e.key==="ArrowLeft"){goto(S.idx-1);e.preventDefault()}
+  if(e.key==="PageDown"&&S.pdf)showPage(S.page+1);
+  if(e.key==="PageUp"&&S.pdf)showPage(S.page-1);
+});
+$("setFen").onclick=()=>{
+  const g=new Chess(); let f=$("fenIn").value.trim();
+  if(f.split(" ").length<4) f+=" w - - 0 1";
+  if(g.load(f)){ S.idx=-1; setFen(g.fen(),[]); msg("Позицію поставлено."); }
+  else msg("FEN не читається. Перевір розстановку.");
+};
 
 /* ---------- Stockfish ---------- */
-// Якщо жодна адреса не спрацює — поклади файл рушія поруч з index.html
-// у репозиторії і додай сюди рядок '/stockfish.js'
-const ENGINE_URLS=[
-  '/stockfish.js',
-  'https://cdnjs.cloudflare.com/ajax/libs/stockfish.js/10.0.2/stockfish.js',
-  'https://cdn.jsdelivr.net/npm/stockfish@10.0.2/src/stockfish.js',
-  'https://unpkg.com/stockfish@10.0.2/src/stockfish.js'
+let engine=null, engineReady=false, pending=null;
+const SF_URLS=[
+  "https://cdnjs.cloudflare.com/ajax/libs/stockfish.js/10.0.2/stockfish.js",
+  "https://cdn.jsdelivr.net/npm/stockfish.js@10.0.2/stockfish.js",
+  "https://unpkg.com/stockfish.js@10.0.2/stockfish.js"
 ];
-const DEPTH=11;
-let ENG=null, ENG_BUSY=false, ENG_ABORT=false;
-
-function fmtEval(cp){
-  if(cp===null||cp===undefined) return '';
-  if(Math.abs(cp)>=90000) return cp>0?'мат білим':'мат чорним';
-  return (cp>0?'+':'')+(cp/100).toFixed(1);
-}
-// для підрахунку втрати мат обрізаємо, інакше все після нього стає «??»
-function clamp(cp){ return Math.max(-1500,Math.min(1500,cp)); }
-
-function makeWorker(url){
-  const src=url.startsWith('/')?url:url;
-  const blob=new Blob([`importScripts(${JSON.stringify(new URL(src,location.href).href)});`],{type:'text/javascript'});
-  return new Worker(URL.createObjectURL(blob));
-}
-
-function loadEngine(){
-  if(ENG) return Promise.resolve(ENG);
-  const tryOne=(i)=>new Promise((res,rej)=>{
-    if(i>=ENGINE_URLS.length) return rej(new Error('жодна адреса рушія не відповіла'));
-    let w;
-    try{ w=makeWorker(ENGINE_URLS[i]); }catch(e){ return res(tryOne(i+1)); }
-    const timer=setTimeout(()=>{ try{w.terminate()}catch(e){} res(tryOne(i+1)); },12000);
-    w.onerror=()=>{ clearTimeout(timer); try{w.terminate()}catch(e){} res(tryOne(i+1)); };
-    w.onmessage=(e)=>{
-      const t=String(e.data||'');
-      if(t.indexOf('uciok')>=0){
-        clearTimeout(timer);
-        $('engModel').textContent=ENGINE_URLS[i].replace(/^https?:\/\/([^/]+).*/,'$1');
-        ENG=w; res(w);
-      }
-    };
-    w.postMessage('uci');
-  });
-  return tryOne(0);
-}
-
-function evalFen(fen){
-  return new Promise(res=>{
-    let best=null;
-    const on=(e)=>{
-      const t=String(e.data||'');
-      if(t.startsWith('info')&&t.indexOf(' score ')>=0){
-        const cp=t.match(/score cp (-?\d+)/), mt=t.match(/score mate (-?\d+)/);
-        if(mt) best=(+mt[1]>0?1:-1)*100000;
-        else if(cp) best=+cp[1];
-      }else if(t.startsWith('bestmove')){
-        ENG.removeEventListener('message',on);
-        res(best===null?null:best*(fen.split(' ')[1]==='w'?1:-1));
-      }
-    };
-    ENG.addEventListener('message',on);
-    ENG.postMessage('position fen '+fen);
-    ENG.postMessage('go depth '+DEPTH);
-    // UCI віддає оцінку з погляду того, хто ходить — переводимо до погляду білих
-    
-  });
-}
-
-function engStop(){ ENG_ABORT=true; $('btnEngStop').hidden=true; $('engProg').hidden=true; }
-
-$('btnEng').onclick=async()=>{
-  if(ENG_BUSY) return;
-  ENG_BUSY=true; ENG_ABORT=false;
-  $('btnEng').disabled=true; $('btnEngStop').hidden=false; $('engProg').hidden=false;
-  $('engSt').className='status'; $('engSt').textContent='Завантажую рушій…';
+function startEngine(url){
   try{
-    await loadEngine();
-    const g=new Chess(); const fens=[g.fen()];
-    for(const m of SOLVED){ g.move(m.san); fens.push(g.fen()); }
-    let prev=await evalFen(fens[0]);
-    for(let i=0;i<SOLVED.length;i++){
-      if(ENG_ABORT) break;
-      const after=await evalFen(fens[i+1]);
-      const sign=(i%2===0)?1:-1;                 // хід білих чи чорних
-      SOLVED[i].ev=after;
-      SOLVED[i].loss=(after===null||prev===null)?0:Math.max(0,(clamp(prev)-clamp(after))*sign);
-      prev=after;
-      $('engBar').style.width=Math.round((i+1)/SOLVED.length*100)+'%';
-      $('engSt').textContent=`Аналіз ${i+1} з ${SOLVED.length}…`;
-      if(i%4===3) render();
-    }
-    render();
-    const bl=SOLVED.filter(m=>m.loss>=300).length;
-    const sus=SOLVED.filter((m,i)=>m.loss>=300&&!ANCHORS[i]&&m.c>=1.2).length;
-    $('engSt').className='status'+(sus?' err':'');
-    $('engSt').textContent=ENG_ABORT?'Аналіз зупинено.':
-      `Готово. Грубих помилок: ${bl}.`+(sus?` З них ${sus} у ходах, прочитаних ненадійно — обведені пунктиром, перевір по фото.`:'');
-  }catch(e){
-    $('engSt').className='status err';
-    $('engSt').textContent='Рушій не завантажився: '+e.message+'. Поклади файл stockfish.js у репозиторій поруч з index.html.';
+    engine=new Worker(url);
+    engine.onmessage=onEngine;
+    engine.onerror=ev=>{ DIAG.push("двигун: "+(ev.message||"помилка воркера")); engineFail(); };
+    engine.postMessage("uci");
+    engine.postMessage("setoption name Threads value 1");
+    engine.postMessage("isready");
+    setTimeout(()=>{ if(!engineReady) engineFallback(); }, 12000);
+  }catch(e){ DIAG.push("двигун не запустився: "+e.message); engineFallback(); }
+}
+function engineFail(){ $("dEng").className="dot err"; $("engTxt").textContent="двигун недоступний"; }
+let triedFallback=false, triedInline=false;
+let engineInline=false;
+async function engineFallback(){
+  if(triedFallback||engineReady) return;
+  triedFallback=true;
+  const u=await fetchWorkerUrl(SF_URLS);
+  if(u){
+    if(engine&&engine.terminate) try{engine.terminate()}catch(e){}
+    startEngine(u);
+    setTimeout(()=>{ if(!engineReady) engineInlineLoad(); }, 12000);
+    return;
   }
-  $('btnEng').disabled=false; $('btnEngStop').hidden=true; $('engProg').hidden=true; ENG_BUSY=false;
+  engineInlineLoad();
+}
+/* Якщо воркери заборонені зовсім — двигун на головному потоці.
+   Думає повільніше й підвішує інтерфейс, тому глибину ріжемо. */
+async function engineInlineLoad(){
+  if(triedInline||engineReady) return;
+  triedInline=true;
+  for(const u of SF_URLS){
+    try{
+      await loadScript(u);
+      if(typeof STOCKFISH!=="function") continue;
+      if(engine&&engine.terminate) try{engine.terminate()}catch(e){}
+      engine=STOCKFISH(); engineInline=true;
+      engine.onmessage=d=>onEngine(typeof d==="string"?{data:d}:d);
+      engine.postMessage("uci"); engine.postMessage("isready");
+      $("engTxt").textContent="Stockfish (головний потік)";
+      return;
+    }catch(e){ DIAG.push("двигун inline: "+e.message); }
+  }
+  engineFail();
+}
+startEngine(shimWorkerUrl(SF_URLS[0]));
+function onEngine(e){
+  const line = typeof e.data==="string" ? e.data : "";
+  if(line.indexOf("SHIM_FAIL:")===0){ DIAG.push("двигун, importScripts: "+line.slice(10)); engineFallback(); return; }
+  if(!engineReady && (line==="readyok"||line.indexOf("uciok")===0)){
+    engineReady=true; $("dEng").className="dot on"; $("engTxt").textContent="Stockfish готовий";
+    if(pending){ const f=pending; pending=null; analyse(f); }
+    return;
+  }
+  const m=line.match(/^info .*?depth (\d+).*?score (cp|mate) (-?\d+).*?\bpv (.+)$/);
+  if(m){
+    const side = S.fen.split(" ")[1]==="w" ? 1 : -1;
+    let txt,pct;
+    if(m[2]==="mate"){ const n=+m[3]*side; txt=(n>0?"#":"#-")+Math.abs(n); pct=n>0?100:0; }
+    else{ const cp=+m[3]*side/100; txt=(cp>0?"+":"")+cp.toFixed(2); pct=50+50*(2/(1+Math.exp(-0.45*cp))-1); }
+    $("evalNum").textContent=txt;
+    $("evalFill").style.width=Math.max(2,Math.min(98,pct))+"%";
+    $("pv").textContent="гл. "+m[1]+"  "+m[4].split(" ").slice(0,8).join(" ");
+  }
+}
+function analyse(fen){
+  if(!engine) return;
+  if(!engineReady){ pending=fen; return; }
+  const d = engineInline ? Math.min(14, +$("depth").value) : +$("depth").value;
+  engine.postMessage("stop");
+  engine.postMessage("position fen "+fen);
+  engine.postMessage("go depth "+d);
+}
+$("autoEval").onchange=e=>{
+  if(e.target.checked) analyse(S.fen);
+  else { engine&&engine.postMessage("stop"); $("evalNum").textContent="—"; $("pv").textContent=""; }
 };
-$('btnEngStop').onclick=engStop;
 
-/* ---------- перегляд знятого бланка ---------- */
-let SHOT=0;
-function drawShot(){
-  const box=$('sheetView');
-  if(!IMAGES.length){box.hidden=true;return;}
-  box.hidden=false;
-  if(SHOT>=IMAGES.length) SHOT=0;
-  $('shotImg').src=IMAGES[SHOT].url;
-  $('zNum').textContent=IMAGES.length>1?`${SHOT+1}/${IMAGES.length}`:'';
-  $('zPrev').hidden=$('zNext').hidden=IMAGES.length<2;
-  applyZoom();
-}
-function applyZoom(){ $('shotImg').style.width=$('zRange').value+'%'; }
-$('zRange').addEventListener('input',applyZoom);
-$('zIn').onclick=()=>{$('zRange').value=Math.min(500,+$('zRange').value+50);applyZoom();};
-$('zOut').onclick=()=>{$('zRange').value=Math.max(100,+$('zRange').value-50);applyZoom();};
-$('zPrev').onclick=()=>{SHOT=(SHOT-1+IMAGES.length)%IMAGES.length;drawShot();};
-$('zNext').onclick=()=>{SHOT=(SHOT+1)%IMAGES.length;drawShot();};
-
-/* ---------- фото ---------- */
-async function shrink(file){
-  const url=await new Promise(r=>{const fr=new FileReader();fr.onload=()=>r(fr.result);fr.readAsDataURL(file);});
-  const img=await new Promise(r=>{const i=new Image();i.onload=()=>r(i);i.src=url;});
-  const max=1200,k=Math.min(1,max/Math.max(img.width,img.height));
-  const c=document.createElement('canvas');c.width=img.width*k;c.height=img.height*k;
-  c.getContext('2d').drawImage(img,0,0,c.width,c.height);
-  const d=c.toDataURL('image/jpeg',.72);
-  return {media:'image/jpeg',data:d.split(',')[1],url:d};
-}
-async function onPick(e){
-  $('st').className='status';$('st').textContent='Готую фото…';
-  for(const f of e.target.files) IMAGES.push(await shrink(f));
-  drawThumbs(); drawShot();
-  $('st').textContent=`${IMAGES.length} фото готово. Тисни «Розпізнати».`;
-  e.target.value='';
-}
-$('fileCam').addEventListener('change',onPick);
-$('fileLib').addEventListener('change',onPick);
-function drawThumbs(){
-  const t=$('thumbs');t.innerHTML='';
-  IMAGES.forEach((im,i)=>{
-    const d=document.createElement('div');d.className='th';
-    const img=document.createElement('img');img.src=im.url;img.alt='бланк '+(i+1);
-    const b=document.createElement('button');b.textContent='×';b.title='прибрати';
-    b.onclick=()=>{IMAGES.splice(i,1);drawThumbs();drawShot();$('btnRec').disabled=!IMAGES.length;};
-    d.append(img,b);t.appendChild(d);
-  });
-  $('btnRec').disabled=!IMAGES.length;
-}
-
-const PROMPT=`Це фото рукописного шахового бланка (українська нотація: Кр=король, Ф=ферзь, Т=тура, С=слон, К=кінь).
-Перепиши ЛІТЕРА В ЛІТЕРУ те, що написано в комірках. НЕ виправляй помилки, НЕ добудовуй ходи, НЕ роби їх легальними — це зробить окремий модуль.
-Порожня або нерозбірлива комірка = null. Закреслений хід — бери останній варіант.
-Якщо фото кілька, вони можуть містити різні колонки одного бланка: об'єднай за номерами ходів, без дублікатів.
-Поверни ЛИШЕ JSON, без пояснень і без markdown:
-{"header":{"event":"","round":"","date":"РРРР.ММ.ДД","white":"","black":"","result":""},
- "moves":[{"n":1,"w":"d4","b":"Кf6"}]}`;
-
-$('btnRec').onclick=async()=>{
-  $('btnRec').disabled=true;
-  $('st').className='status';$('st').textContent='Читаю бланк… (до 10 секунд)';
+$("diag").onclick = async () => {
+  const L=[];
+  L.push((typeof pdfjsLib!=="undefined"?"✔":"✘")+" pdf.js "+(typeof pdfjsLib!=="undefined"?(pdfjsLib.version||""):"не завантажився"));
+  L.push((typeof Chess!=="undefined"?"✔":"✘")+" chess.js "+(typeof Chess!=="undefined"?"":"не завантажився"));
+  try{ const w=new Worker(shimWorkerUrl("data:application/javascript,")); w.terminate(); L.push("✔ blob-воркери дозволені"); }
+  catch(e){ L.push("✘ blob-воркери заборонені: "+e.message); }
+  L.push((window.pdfjsWorker?"✔ запасний режим головного потоку активний":"— запасний режим не знадобився"));
+  L.push((engineReady?"✔":"✘")+" Stockfish "+(engineReady?(engineInline?"на головному потоці":"у воркері"):"не піднявся"));
+  L.push((S.pdf?"✔ PDF відкрито, стор.: "+S.total:"— PDF ще не відкривали"));
   try{
-    const r=await fetch('/.netlify/functions/ocr',{method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({images:IMAGES.map(i=>({media_type:i.media,data:i.data})),prompt:PROMPT})});
-    const data=await r.json().catch(()=>({error:'сервер відповів '+r.status}));
-    if(!r.ok||data.error) throw new Error(data.error||('сервер відповів '+r.status));
-    const txt=String(data.text||'').replace(/```json|```/g,'').trim();
-    apply(JSON.parse(txt));
-  }catch(err){
-    $('st').className='status err';
-    $('st').textContent='Не вдалося розпізнати: '+err.message+'. Перезніми чіткіше або тисни «Демо-бланк».';
-  }
-  $('btnRec').disabled=false;
+    const t=await fetch("https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js",{method:"HEAD"});
+    L.push("✔ мережа до cdnjs: "+t.status);
+  }catch(e){ L.push("✘ fetch до cdnjs заблоковано (CSP): "+e.message); }
+  const box=$("moves");
+  box.innerHTML='<div style="font-family:var(--sans);white-space:pre-wrap;line-height:1.8">'+
+    L.join("\n")+(DIAG.length?"\n\nПомилки:\n"+DIAG.join("\n"):"")+"</div>";
+  msg("Діагностика в лівій панелі. Скинь мені цей текст, якщо щось із ✘.");
 };
 
-function apply(j){
-  const h=j.header||{};
-  $('hEvent').value=h.event||'';$('hWhite').value=h.white||'';$('hBlack').value=h.black||'';
-  $('hDate').value=h.date||'';$('hRound').value=h.round||'';
-  RESULT=['1-0','0-1','1/2-1/2'].includes(h.result)?h.result:'*';
-  [...$('resBtns').children].forEach(x=>x.setAttribute('aria-pressed',x.dataset.r===RESULT));
-  $('pHead').hidden=false;
-  TOKENS=[];ANCHORS={};
-  (j.moves||[]).slice().sort((a,b)=>(a.n||0)-(b.n||0)).forEach(m=>{
-    TOKENS.push(m.w||'');
-    if(m.b!==null&&m.b!==undefined&&m.b!=='') TOKENS.push(m.b);
+/* ---------- поділитися партією ---------- */
+function currentSegment(){
+  let n=0;
+  for(const seg of S.segs){
+    if(S.idx>=n && S.idx<n+seg.moves.length) return seg;
+    n+=seg.moves.length;
+  }
+  return S.segs[0]||null;
+}
+function pad(x){ return x<10?"0"+x:""+x; }
+function segPGN(seg){
+  const d=new Date();
+  const src=(S.fileKey.split(":")[0]||"книга")+", с. "+S.page;
+  const head=[
+    ['Event', src],
+    ['Site', 'Smart Chess System — читалка книг'],
+    ['Date', d.getFullYear()+"."+pad(d.getMonth()+1)+"."+pad(d.getDate())],
+    ['White','?'],['Black','?'],['Result','*'],
+    ['Annotator','розпізнано автоматично, звірити з оригіналом']
+  ].map(([k,v])=>'['+k+' "'+String(v).replace(/"/g,"'")+'"]').join("\n");
+  let body="", line="";
+  seg.moves.forEach((m,i)=>{
+    if(m.status==="bad") return;
+    const tok=(i%2===0?(Math.floor(i/2)+1)+". ":"")+m.san+" ";
+    if(line.length+tok.length>78){ body+=line.trim()+"\n"; line=""; }
+    line+=tok;
   });
-  while(TOKENS.length&&!TOKENS[TOKENS.length-1]) TOKENS.pop();
-  SEL=-1;rerun();SEL=SOLVED.length-1;render();
+  body+=line.trim();
+  return head+"\n\n"+body+" *\n";
+}
+function segMoves(seg){
+  const out=[];
+  for(const m of seg.moves){ if(m.status==="bad") break; out.push(m.san); }
+  return out;
+}
+/* lichess приймає тільки ходи через "_", без тегів PGN */
+function lichessUrl(seg){
+  const mv=segMoves(seg).map(s=>s.replace(/#/g,"%23"));
+  let url="https://lichess.org/analysis/pgn/"+mv.join("_");
+  while(url.length>1900 && mv.length>4){ mv.pop(); url="https://lichess.org/analysis/pgn/"+mv.join("_"); }
+  return {url, cut: mv.length<segMoves(seg).length, n:mv.length};
+}
+function shareReady(){
+  const on = S.segs.length>0 && S.flat.some(m=>m.status!=="bad");
+  ["bPgn","bMail","bFb"].forEach(id=>$(id).disabled=!on);
+  if(navigator.share) $("bShare").hidden=!on;
 }
 
-$('btnDemo').onclick=()=>{
-  apply({header:{event:'Чемпіонат України серед юнаків та дівчат до 10 р.',round:'8',date:'2026.06.09',
-    white:'Літвак Мілана',black:'Бойко Евеліна',result:'1/2-1/2'},
-    moves:[[1,'d4','Кf6'],[2,'Cf4','d5'],[3,'e3','e6'],[4,'Кf3','c5'],[5,'c3','Кc6'],[6,'Кbd2','Ce7'],
-    [7,'Ce2','0-0'],[8,'0-0','Cd7'],[9,'Кe5','Cc8'],[10,'Кd5','Кe4'],[11,'Кd2','f5'],[12,'f3','Кd2'],
-    [13,'Фd2','Кe5'],[14,'Ce5','cd'],[15,'cd','Cd6'],[16,'Cd6','Фd6'],[17,'f4','b6'],[18,'Тf3','Cd7'],
-    [19,'Тh3','Тc8'],[20,'Тc1','Тc1'],[21,'Фc1','Тc8'],[22,'Фd2','b5'],[23,'Тf3','d6'],[24,'Тf3','Тc6'],
-    [25,'Тc1','Тc1'],[26,'Фc1','Фb4'],[27,'a3','Фa5'],[28,'b4','Фd8'],[29,'Фc4','Кb6'],[30,'b3','d5'],
-    [31,'Фb6','Фc8'],[32,'c3','Фe8'],[33,'Фd6','e5'],[34,'Фe4','Крh7'],[35,'Фc7','Крg8'],[36,'h4','d5']]
-    .map(([n,w,b])=>({n,w,b}))});
+$("bPgn").onclick=()=>{
+  const seg=currentSegment(); if(!seg) return;
+  const L=lichessUrl(seg);
+  $("pgnTitle").textContent=seg.title+" — PGN";
+  $("pgnText").value=segPGN(seg);
+  $("pgnNote").textContent=L.cut?("на lichess піде перші "+L.n+" ходів — далі не влазить у посилання"):"";
+  $("pgnLichess").onclick=()=>window.open(L.url,"_blank","noopener");
+  $("pgnBack").hidden=false;
 };
+$("pgnClose").onclick=()=>$("pgnBack").hidden=true;
+$("pgnBack").onclick=e=>{ if(e.target===$("pgnBack")) $("pgnBack").hidden=true; };
+$("pgnCopy").onclick=async()=>{
+  const t=$("pgnText");
+  try{ await navigator.clipboard.writeText(t.value); $("pgnNote").textContent="Скопійовано."; }
+  catch(e){ t.select(); try{ document.execCommand("copy"); $("pgnNote").textContent="Скопійовано."; }
+            catch(e2){ $("pgnNote").textContent="Не дає копіювати — виділи текст вручну."; } }
+};
+$("pgnSave").onclick=()=>{
+  try{
+    const blob=new Blob([$("pgnText").value],{type:"application/x-chess-pgn"});
+    const a=document.createElement("a");
+    a.href=URL.createObjectURL(blob);
+    a.download=(S.fileKey.split(":")[0]||"partiya").replace(/\.pdf$/i,"")+"-s"+S.page+".pgn";
+    document.body.appendChild(a); a.click(); a.remove();
+    $("pgnNote").textContent="Файл збережено.";
+  }catch(e){ $("pgnNote").textContent="Завантаження заблоковано — скопіюй текст."; }
+};
+
+$("bMail").onclick=()=>{
+  const seg=currentSegment(); if(!seg) return;
+  const L=lichessUrl(seg);
+  const subj="Партія з книги: "+(S.fileKey.split(":")[0]||"")+" (с. "+S.page+")";
+  const body="Партія, розпізнана зі сторінки "+S.page+".\n"+
+              "Подивитися на дошці: "+L.url+"\n\n"+segPGN(seg)+
+              "\nРозпізнано автоматично — звірте з оригіналом.\n";
+  const href="mailto:?subject="+encodeURIComponent(subj)+"&body="+encodeURIComponent(body);
+  if(href.length>1900){
+    $("bPgn").onclick();
+    $("pgnNote").textContent="Партія задовга для листа — скопіюй PGN і встав у пошту вручну.";
+    return;
+  }
+  window.location.href=href;
+};
+
+/* Facebook уміє ділитися тільки посиланням, тому шлемо лінк на розбір у lichess */
+$("bFb").onclick=()=>{
+  const seg=currentSegment(); if(!seg) return;
+  const L=lichessUrl(seg);
+  window.open("https://www.facebook.com/sharer/sharer.php?u="+encodeURIComponent(L.url),
+              "_blank","noopener,width=620,height=560");
+  msg("Facebook ділиться лише посиланням — пішов лінк на розбір партії в lichess."+(L.cut?" Перші "+L.n+" ходів.":""));
+};
+
+$("bShare").onclick=async()=>{
+  const seg=currentSegment(); if(!seg) return;
+  const L=lichessUrl(seg);
+  try{ await navigator.share({title:"Партія з книги, с. "+S.page, text:segPGN(seg), url:L.url}); }
+  catch(e){ /* користувач закрив вікно */ }
+};
+
+drawBoard(S.fen,[]);
 </script>
 </body>
 </html>
