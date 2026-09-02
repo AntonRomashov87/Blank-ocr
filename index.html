@@ -92,6 +92,12 @@
   .board .lt{background-color:var(--lt)}
   .board .dk{background-color:var(--dk)}
   .board .sq.hl::after{content:"";position:absolute;inset:0;background:var(--hl)}
+  .board .sq{cursor:pointer}
+  .board .sq.pick{box-shadow:inset 0 0 0 3px var(--gold)}
+  .board .sq.dest::before{content:"";position:absolute;left:38%;top:38%;width:24%;height:24%;
+    border-radius:50%;background:rgba(26,58,107,.45);z-index:1}
+  .board .sq.dest.take::before{left:6%;top:6%;width:88%;height:88%;border-radius:50%;
+    background:none;border:4px solid rgba(192,57,43,.55)}
   .board .co{position:absolute;font-size:9px;color:rgba(0,0,0,.45);font-family:ui-monospace,monospace;z-index:2}
   .board .co.f{right:2px;bottom:1px}
   .board .co.r{left:2px;top:1px}
@@ -202,6 +208,7 @@
           <button class="ghost tiny" id="btnClear">Зняти підтвердження</button>
           <button class="ghost tiny" id="btnInsert">Вставити пропущений</button>
           <button class="ghost tiny" id="btnDelete">Видалити комірку</button>
+          <button class="ghost tiny" id="btnTrunc">Обрізати після цього</button>
         </div>
       </div>
     </div>
@@ -215,7 +222,9 @@
     <span class="k" style="background:var(--amber)"></span>виправлено правилами &nbsp;
     <span class="k" style="background:var(--red)"></span>ненадійно &nbsp;
     <span class="k" style="background:var(--green)"></span>підтверджено тобою<br>
-    Тапни на хід — унизу з'явиться позиція перед ним і список легальних ходів.
+    Тапни на хід — з'явиться позиція перед ним і список легальних ходів.
+    На дошці можна ходити: тап по фігурі, тап по полю. У кінці партії хід дописується, всередині — замінює прочитаний.
+    Стрілки ліворуч і праворуч на клавіатурі гортають партію.
   </div>
   <div class="row" style="margin-top:10px">
     <button class="ghost tiny" id="btnReset">Скинути мої виправлення</button>
@@ -403,7 +412,7 @@ function render(){
           td.appendChild(e);
           if(s.loss>=300&&!ANCHORS[j]&&s.c>=1.2) td.classList.add('suspect');
         }
-        td.onclick=()=>{SEL=j;render();$('pBoard').scrollIntoView({behavior:'smooth',block:'nearest'});};
+        td.onclick=()=>{SEL=j;clearPick();render();$('pBoard').scrollIntoView({behavior:'smooth',block:'nearest'});};
       }
       tr.appendChild(td);
     }
@@ -440,6 +449,9 @@ function drawBoard(){
       const p=grid[ri][fi];
       if(p){const key=(p===p.toUpperCase()?'w':'b')+p.toUpperCase();d.style.backgroundImage=`url("${PIECES[key]}")`;}
       if(last&&(last.from===sq||last.to===sq)) d.classList.add('hl');
+      if(PICK===sq) d.classList.add('pick');
+      if(PICK&&DESTS.has(sq)){ d.classList.add('dest'); if(p) d.classList.add('take'); }
+      d.onclick=()=>onSquare(sq);
       if(fi===(FLIP?0:7)){const c=document.createElement('span');c.className='co f';c.textContent=8-ri;d.appendChild(c);}
       if(ri===(FLIP?0:7)){const c=document.createElement('span');c.className='co r';c.textContent=files[fi];d.appendChild(c);}
       el.appendChild(d);
@@ -450,6 +462,38 @@ function drawBoard(){
   $('posInfo').textContent=`півхід ${SEL+1} з ${SOLVED.length}`;
   $('nPrev').disabled=SEL<0;$('nFirst').disabled=SEL<0;
   $('nNext').disabled=SEL>=SOLVED.length-1;$('nLast').disabled=SEL>=SOLVED.length-1;
+}
+
+let PICK=null, DESTS=new Set();
+function onSquare(sq){
+  const g=stateAt(SEL+1);
+  const moves=g.moves({verbose:true});
+  if(PICK){
+    const hit=moves.filter(m=>m.from===PICK&&m.to===sq);
+    if(hit.length){ playOnBoard(hit[0]); return; }
+  }
+  if(moves.some(m=>m.from===sq)){
+    PICK=sq; DESTS=new Set(moves.filter(m=>m.from===sq).map(m=>m.to));
+  }else{ PICK=null; DESTS=new Set(); }
+  drawBoard();
+}
+function playOnBoard(m){
+  const g=stateAt(SEL+1);
+  const mv=g.move(m.promotion?{from:m.from,to:m.to,promotion:'q'}:{from:m.from,to:m.to});
+  PICK=null; DESTS=new Set();
+  if(!mv) return;
+  const i=SEL+1;
+  if(i>=TOKENS.length) TOKENS.push(mv.san);   // дописуємо партію в кінець
+  ANCHORS[i]=mv.san;                          // хід стає підтвердженим
+  rerun(true);
+  SEL=Math.min(i,SOLVED.length-1);
+  render();
+}
+function truncateHere(){
+  const keep=SEL+1;
+  TOKENS=TOKENS.slice(0,keep);
+  for(const k in ANCHORS) if(+k>=keep) delete ANCHORS[k];
+  rerun(true); SEL=SOLVED.length-1; render();
 }
 
 function drawCands(){
@@ -467,10 +511,11 @@ function drawCands(){
   });
 }
 
-$('nFirst').onclick=()=>{SEL=-1;render()};
-$('nPrev').onclick=()=>{if(SEL>=0){SEL--;render()}};
-$('nNext').onclick=()=>{if(SEL<SOLVED.length-1){SEL++;render()}};
-$('nLast').onclick=()=>{SEL=SOLVED.length-1;render()};
+function clearPick(){PICK=null;DESTS=new Set();}
+$('nFirst').onclick=()=>{SEL=-1;clearPick();render()};
+$('nPrev').onclick=()=>{if(SEL>=0){SEL--;clearPick();render()}};
+$('nNext').onclick=()=>{if(SEL<SOLVED.length-1){SEL++;clearPick();render()}};
+$('nLast').onclick=()=>{SEL=SOLVED.length-1;clearPick();render()};
 $('nFlip').onclick=()=>{FLIP=!FLIP;drawBoard()};
 document.addEventListener('keydown',e=>{
   if(!SOLVED.length||/INPUT|TEXTAREA/.test(document.activeElement.tagName))return;
@@ -482,6 +527,7 @@ $('btnClear').onclick=()=>{delete ANCHORS[SEL];rerun(true)};
 $('btnReset').onclick=()=>{ANCHORS={};rerun(true)};
 $('btnInsert').onclick=()=>{TOKENS.splice(SEL,0,'');shiftAnchors(SEL,1);rerun(true)};
 $('btnDelete').onclick=()=>{TOKENS.splice(SEL,1);shiftAnchors(SEL+1,-1);delete ANCHORS[SEL];rerun(true)};
+$('btnTrunc').onclick=truncateHere;
 
 /* ---------- PGN ---------- */
 let RESULT='*';
